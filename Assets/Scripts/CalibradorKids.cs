@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using UnityEngine.EventSystems;
 using TMPro; // Requerido para look Premium
 using System.Collections;
 using System.Collections.Generic;
@@ -62,11 +63,9 @@ public class CalibradorKids : MonoBehaviour
         if (botonVolver == null) botonVolver = FindObjectByName("VolverBtn")?.GetComponent<Button>();
         
         // Estilo Senior: Asegurar que el botón volver sea brillante y visible
-        if (botonVolver != null && botonVolver.image != null)
+        if (botonVolver != null)
         {
             botonVolver.interactable = true;
-            botonVolver.image.color = new Color(1f, 0.5f, 0.5f, 1f); // Coral brillante
-            botonVolver.image.canvasRenderer.SetAlpha(1f);
         }
         if (botonIniciarManual == null) botonIniciarManual = FindObjectByName("IniciarManual")?.GetComponent<Button>();
         
@@ -82,17 +81,9 @@ public class CalibradorKids : MonoBehaviour
         {
             botonReintentar.image.sprite = botonContinuar.image.sprite;
             botonReintentar.image.type = botonContinuar.image.type;
-            
-            // Colores temáticos distintos
-            botonReintentar.image.color = new Color(1f, 0.3f, 0.3f, 1f); // Rojo Coral
-            botonContinuar.image.color = new Color(0f, 0.8f, 1f, 1f); // Cyan Neón
-            
-            // Configurar transiciones
-            ColorBlock colorsReintentar = botonReintentar.colors;
-            colorsReintentar.normalColor = new Color(1f, 0.3f, 0.3f, 1f);
-            colorsReintentar.highlightedColor = new Color(1f, 0.5f, 0.5f, 1f);
-            botonReintentar.colors = colorsReintentar;
         }
+        if (botonReintentar != null) botonReintentar.gameObject.SetActive(false);
+        if (botonContinuar != null) botonContinuar.gameObject.SetActive(false);
 
         EnsureCalibrationPoint();
         
@@ -481,6 +472,9 @@ public class CalibradorKids : MonoBehaviour
 
     IEnumerator MostrarResultados(bool exito)
     {
+        if (exito && GestorPaciente.Instance != null)
+            GestorPaciente.Instance.haCalibradoEnEstaSesion = true;
+
         if (panelResultados != null) panelResultados.SetActive(true);
         if (panelCalibracion != null) panelCalibracion.SetActive(false);
         if (headerPanel != null) headerPanel.SetActive(false);
@@ -488,7 +482,6 @@ public class CalibradorKids : MonoBehaviour
         
         if (textoResultadoTitulo != null) {
             textoResultadoTitulo.text = exito ? "¡CALIBRACIÓN EXITOSA!" : "CALIBRACIÓN FALLIDA";
-            textoResultadoTitulo.color = exito ? new Color(0.1f, 1f, 0.9f, 1f) : new Color(1f, 0.42f, 0.42f, 1f); 
             textoResultadoTitulo.gameObject.SetActive(true);
         }
         
@@ -499,11 +492,6 @@ public class CalibradorKids : MonoBehaviour
         
         if (botonReintentar != null) {
             botonReintentar.gameObject.SetActive(!exito);
-            var colors = botonReintentar.colors;
-            colors.normalColor = new Color(1f, 0.5f, 0.5f); // Coral Red
-            colors.highlightedColor = new Color(0.9f, 0.4f, 0.4f);
-            colors.pressedColor = new Color(0.8f, 0.3f, 0.3f);
-            botonReintentar.colors = colors;
             botonReintentar.onClick.RemoveAllListeners();
             botonReintentar.onClick.AddListener(() => {
                 panelResultados.SetActive(false);
@@ -512,11 +500,8 @@ public class CalibradorKids : MonoBehaviour
         
         if (botonContinuar != null) {
             botonContinuar.gameObject.SetActive(exito);
-            var colors = botonContinuar.colors;
-            colors.normalColor = Color.cyan;
-            botonContinuar.colors = colors;
             botonContinuar.onClick.RemoveAllListeners();
-            botonContinuar.onClick.AddListener(() => SceneManager.LoadScene("SelectorActividades"));
+            botonContinuar.onClick.AddListener(() => SceneManager.LoadScene("MenuPrincipal"));
         }
 
         if (exito) {
@@ -527,7 +512,7 @@ public class CalibradorKids : MonoBehaviour
                 yield return new WaitForSeconds(1f);
                 timer -= 1f;
             }
-            SceneManager.LoadScene("SelectorActividades");
+            SceneManager.LoadScene("MenuPrincipal");
         }
         else {
             if (textoContadorRedireccion != null) textoContadorRedireccion.gameObject.SetActive(false);
@@ -537,7 +522,6 @@ public class CalibradorKids : MonoBehaviour
     [ContextMenu("Debug: Mostrar Toda la UI")]
     public void MostrarTodaLaUI()
     {
-        Debug.Log("CalibradorKids: Modo Diseño activado. Mostrando todos los paneles.");
         if (panelCalibracion != null) panelCalibracion.SetActive(true);
         if (panelResultados != null) panelResultados.SetActive(true);
         if (headerPanel != null) headerPanel.SetActive(true);
@@ -555,16 +539,27 @@ public class CalibradorKids : MonoBehaviour
 
     public void Volver()
     {
-        Debug.Log("Volviendo al menú principal...");
         SceneManager.LoadScene("MenuPrincipal");
     }
     
-    private void OnDisable()
+    void Update()
     {
-        if (_calibThread != null)
+        if (Input.GetMouseButtonDown(0))
         {
-            _calibThread.StopThread();
-            _calibThread = null;
+            if (EventSystem.current == null) return;
+            PointerEventData eventData = new PointerEventData(EventSystem.current);
+            eventData.position = Input.mousePosition;
+            var results = new System.Collections.Generic.List<RaycastResult>();
+            EventSystem.current.RaycastAll(eventData, results);
+
+            foreach (var r in results)
+            {
+                string n = r.gameObject.name.ToLower();
+                if (n.Contains("volver") || n.Contains("atras") || n.Contains("salir") || n.Contains("menu"))
+                {
+                    Volver();
+                }
+            }
         }
     }
 }

@@ -54,8 +54,9 @@ public class ActividadSeguimiento : BaseActividad
     }
 
     // ─── Update  ──────────────────────────────────────────────────────────────
-    void Update()
+    protected override void Update()
     {
+        base.Update();
         if (!juegoIniciado || juegoPausado || !_activo) return;
 
         _t += Time.deltaTime / duracionSesion;
@@ -134,7 +135,7 @@ public class ActividadSeguimiento : BaseActividad
         FinalizarActividad("Estrella Lineal");
     }
 
-    protected override void MostrarInfo()
+    public override void MostrarInfo()
     {
         panelInfo.Mostrar("ESTRELLA LINEAL",
             "Mira fijamente la estrella azul y síguela mientras se mueve de izquierda a derecha. " +

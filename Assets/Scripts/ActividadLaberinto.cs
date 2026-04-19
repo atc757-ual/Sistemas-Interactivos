@@ -43,8 +43,9 @@ public class ActividadLaberinto : BaseActividad
         }
     }
 
-    void Update()
+    protected override void Update()
     {
+        base.Update();
         if (!juegoIniciado || juegoPausado || puntoActual == null) return;
 
         // Move target along path
@@ -78,7 +79,7 @@ public class ActividadLaberinto : BaseActividad
         }
     }
 
-    protected override void MostrarInfo()
+    public override void MostrarInfo()
     {
         panelInfo.Mostrar("LABERINTO", "¡Sigue al punto mágico por todo el laberinto sin quitarle los ojos de encima! Si lo sigues bien, sumarás muchos puntos.");
     }

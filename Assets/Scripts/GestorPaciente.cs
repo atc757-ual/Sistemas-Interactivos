@@ -41,6 +41,11 @@ public class GestorPaciente : MonoBehaviour
     [Header("Paciente Actual")]
     public DatosPaciente pacienteActual;
     
+    [Header("Estado de Sesión Temporal")]
+    public System.DateTime inicioSesion;
+    public bool haCalibradoEnEstaSesion = false;
+    private const int TIEMPO_SESION_MINUTOS = 60;
+
     [Header("Lista de Todos los Pacientes")]
     public List<DatosPaciente> listaPacientes = new List<DatosPaciente>();
     
@@ -61,10 +66,37 @@ public class GestorPaciente : MonoBehaviour
         }
     }
 
+    public DatosPaciente BuscarPacientePorDNI(string dni)
+    {
+        return listaPacientes.Find(p => p.dni == dni);
+    }
+
+    public void IniciarSesion(DatosPaciente paciente)
+    {
+        pacienteActual = paciente;
+        inicioSesion = System.DateTime.Now;
+        haCalibradoEnEstaSesion = false; // Reset cada vez que inicia sesión nueva
+        Debug.Log($"Sesión iniciada para {paciente.nombre} a las {inicioSesion}");
+    }
+
+    public bool EsSesionValida()
+    {
+        if (pacienteActual == null) return false;
+        
+        System.TimeSpan transcurrido = System.DateTime.Now - inicioSesion;
+        return transcurrido.TotalMinutes < TIEMPO_SESION_MINUTOS;
+    }
+
+    public void CerrarSesion()
+    {
+        pacienteActual = null;
+        haCalibradoEnEstaSesion = false;
+        Debug.Log("Sesión cerrada y datos temporales borrados.");
+    }
+
     public void RegistrarPaciente(string dni, string nombre)
     {
-        // Search if patient already exists in the list
-        pacienteActual = listaPacientes.Find(p => p.dni == dni);
+        pacienteActual = BuscarPacientePorDNI(dni);
 
         if (pacienteActual == null)
         {
@@ -73,14 +105,15 @@ public class GestorPaciente : MonoBehaviour
             pacienteActual.nombre = nombre;
             pacienteActual.fechaSesion = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm");
             listaPacientes.Add(pacienteActual);
-            Debug.Log($"Nuevo paciente creado: {nombre}");
+            Debug.Log($"Nuevo paciente creado y guardado: {nombre}");
         }
         else
         {
-            pacienteActual.nombre = nombre; // Update name if different
+            pacienteActual.nombre = nombre;
             Debug.Log($"Paciente existente cargado: {nombre}");
         }
 
+        IniciarSesion(pacienteActual);
         GuardarTodosLosDatos();
     }
 

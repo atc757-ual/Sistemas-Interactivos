@@ -70,8 +70,9 @@ public class ActividadBuscaIntruso : BaseActividad
         }
     }
 
-    void Update()
+    protected override void Update()
     {
+        base.Update();
         if (!juegoIniciado || juegoPausado || intrusoActual == null) return;
 
         if (TobiiGazeProvider.Instance != null && TobiiGazeProvider.Instance.HasGaze)
@@ -98,7 +99,7 @@ public class ActividadBuscaIntruso : BaseActividad
         }
     }
 
-    protected override void MostrarInfo()
+    public override void MostrarInfo()
     {
         panelInfo.Mostrar("BUSCA AL INTRUSO", "¡Uno de los objetos es diferente a los demás! Encuéntralo con tu mirada para pasar a la siguiente ronda.");
     }

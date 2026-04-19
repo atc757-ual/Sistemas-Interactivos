@@ -2,6 +2,7 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using UnityEngine.EventSystems;
 using System.Collections.Generic;
 
 public class PantallaResultados : MonoBehaviour
@@ -83,6 +84,31 @@ public class PantallaResultados : MonoBehaviour
                 txt.text = $"{partidas[i].fecha}: {partidas[i].juego} - {partidas[i].puntuacion} pts";
             }
             count++;
+        }
+    }
+
+    void Update()
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (EventSystem.current == null) return;
+            PointerEventData eventData = new PointerEventData(EventSystem.current);
+            eventData.position = Input.mousePosition;
+            var results = new List<RaycastResult>();
+            EventSystem.current.RaycastAll(eventData, results);
+
+            foreach (var r in results)
+            {
+                string n = r.gameObject.name.ToLower();
+                if (n.Contains("menu") || n.Contains("atras") || n.Contains("salir"))
+                {
+                    SceneManager.LoadScene("MenuPrincipal");
+                }
+                if (n.Contains("reintentar") || n.Contains("jugar"))
+                {
+                    SceneManager.LoadScene("SelectorActividades");
+                }
+            }
         }
     }
 }

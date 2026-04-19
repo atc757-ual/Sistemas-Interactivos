@@ -2,6 +2,7 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using UnityEngine.EventSystems;
 using System.Collections; // Requerido para Corrutinas (IEnumerator)
 
 public abstract class BaseActividad : MonoBehaviour
@@ -42,10 +43,6 @@ public abstract class BaseActividad : MonoBehaviour
         // Estilo Senior: Botón Salir siempre vibrante y disponible
         if (botonSalir != null) {
             botonSalir.interactable = true; 
-            if (botonSalir.image != null) {
-                botonSalir.image.color = new Color(1f, 0.5f, 0.5f, 1f); // Coral brillante
-                botonSalir.image.canvasRenderer.SetAlpha(1f);
-            }
         }
 
         if (overlayInicio != null) overlayInicio.SetActive(true);
@@ -67,8 +64,6 @@ public abstract class BaseActividad : MonoBehaviour
             if (botonIniciar != null)
             {
                 botonIniciar.interactable = ojosDetectados;
-                // Cambio de color visual para feedback
-                botonIniciar.image.color = ojosDetectados ? Color.green : new Color(0.5f, 0.5f, 0.5f, 0.5f);
             }
 
             if (textoMensajeInicio != null)
@@ -119,10 +114,42 @@ public abstract class BaseActividad : MonoBehaviour
     public virtual void SalirAlMenu()
     {
         Time.timeScale = 1;
-        SceneManager.LoadScene("SelectorActividades");
+        SceneManager.LoadScene("MenuPrincipal");
     }
 
-    protected abstract void MostrarInfo();
+    public virtual void MostrarInfo()
+    {
+        if (panelInfo != null)
+        {
+            panelInfo.Mostrar("Información de la Actividad", "Observa los elementos que aparecen en pantalla y síguelos con la mirada.");
+        }
+    }
+
+    protected virtual void Update()
+    {
+        // --- PUENTE DE EMERGENCIA PARA ACTIVIDADES ---
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (EventSystem.current == null) return;
+            PointerEventData eventData = new PointerEventData(EventSystem.current);
+            eventData.position = Input.mousePosition;
+            var results = new System.Collections.Generic.List<RaycastResult>();
+            EventSystem.current.RaycastAll(eventData, results);
+
+            foreach (var r in results)
+            {
+                string n = r.gameObject.name.ToLower();
+                if (n.Contains("back") || n.Contains("salir") || n.Contains("menu") || n.Contains("atras"))
+                {
+                    SalirAlMenu();
+                }
+                if (n.Contains("pausar") || n.Contains("pause"))
+                {
+                    AlternarPausa();
+                }
+            }
+        }
+    }
 
     protected void ActualizarPuntuacionUI()
     {
