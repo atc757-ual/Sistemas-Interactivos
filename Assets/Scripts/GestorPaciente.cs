@@ -7,7 +7,8 @@ public class DatosPaciente
 {
     public string dni;
     public string nombre;
-    public string fechaSesion;
+    public string fechaRegistro; // Nueva: fija desde el primer día
+    public string fechaSesion;  // Actualizarda: fecha del último login
     public int puntuacionTotal;
     public List<Partida> historialPartidas = new List<Partida>();
 }
@@ -17,6 +18,9 @@ public class Partida
 {
     public string juego;
     public int puntuacion;
+    public float precision; // Nueva: 0 a 100
+    public bool exito;      // Nueva: si llegó al final
+    public float tiempoJuego; // Nueva: en segundos
     public string fecha;
 }
 
@@ -103,21 +107,23 @@ public class GestorPaciente : MonoBehaviour
             pacienteActual = new DatosPaciente();
             pacienteActual.dni = dni;
             pacienteActual.nombre = nombre;
-            pacienteActual.fechaSesion = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+            pacienteActual.fechaRegistro = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+            pacienteActual.fechaSesion = pacienteActual.fechaRegistro;
             listaPacientes.Add(pacienteActual);
-            Debug.Log($"Nuevo paciente creado y guardado: {nombre}");
+            Debug.Log($"Nuevo paciente registrado el: {pacienteActual.fechaRegistro}");
         }
         else
         {
             pacienteActual.nombre = nombre;
-            Debug.Log($"Paciente existente cargado: {nombre}");
+            pacienteActual.fechaSesion = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+            Debug.Log($"Paciente existente. Última sesión hoy: {pacienteActual.fechaSesion}");
         }
 
         IniciarSesion(pacienteActual);
         GuardarTodosLosDatos();
     }
 
-    public void GuardarPartida(string nombreJuego, int puntuacion)
+    public void GuardarPartida(string nombreJuego, int puntuacion, float precision = 0, bool exito = false, float tiempo = 0)
     {
         if (pacienteActual == null) return;
 
@@ -125,6 +131,9 @@ public class GestorPaciente : MonoBehaviour
         {
             juego = nombreJuego,
             puntuacion = puntuacion,
+            precision = precision,
+            exito = exito,
+            tiempoJuego = tiempo,
             fecha = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
         };
 
@@ -132,6 +141,31 @@ public class GestorPaciente : MonoBehaviour
         pacienteActual.puntuacionTotal += puntuacion;
 
         GuardarTodosLosDatos();
+    }
+
+    // MÉTODOS DE CÁLCULO PARA EL HISTORIAL
+    public float ObtenerPrecisionMedia()
+    {
+        if (pacienteActual == null || pacienteActual.historialPartidas.Count == 0) return 0;
+        float suma = 0;
+        foreach (var p in pacienteActual.historialPartidas) suma += p.precision;
+        return suma / pacienteActual.historialPartidas.Count;
+    }
+
+    public int ObtenerMisionesExitosas()
+    {
+        if (pacienteActual == null) return 0;
+        int count = 0;
+        foreach (var p in pacienteActual.historialPartidas) if (p.exito) count++;
+        return count;
+    }
+
+    public float ObtenerTiempoTotalDeVuelo()
+    {
+        if (pacienteActual == null) return 0;
+        float suma = 0;
+        foreach (var p in pacienteActual.historialPartidas) suma += p.tiempoJuego;
+        return suma;
     }
 
     public void GuardarTodosLosDatos()

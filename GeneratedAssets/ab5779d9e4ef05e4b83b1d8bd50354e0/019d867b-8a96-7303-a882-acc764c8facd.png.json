@@ -1,0 +1,27 @@
+{
+    "asset": "ab5779d9e4ef05e4b83b1d8bd50354e0",
+    "fileName": "019d867b-8a96-7303-a882-acc764c8facd.png",
+    "prompt": "Colorful gift box with a bow for a kids game, bright colors, cartoon style, 2D vector art.",
+    "negativePrompt": "",
+    "model": "67bfd488-3588-4076-9d7b-14710382cf78",
+    "modelName": "Game UI Elements (Flux)",
+    "customSeed": -1,
+    "w3CTraceId": "caca9846325420d2691106084e6174ee",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "pixelateTargetSize": 0,
+    "pixelateKeepImageSize": false,
+    "pixelatePixelBlockSize": 0,
+    "pixelateMode": 0,
+    "pixelateOutlineThickness": 0,
+    "doodles": {
+        "m_Items": []
+    },
+    "upscaleFactor": 0,
+    "dimensions": {
+        "width": 1024,
+        "height": 1024
+    },
+    "spriteSheet": false,
+    "duration": 0.0
+}

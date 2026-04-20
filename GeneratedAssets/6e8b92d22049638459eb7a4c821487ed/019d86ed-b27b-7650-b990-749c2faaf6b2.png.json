@@ -1,0 +1,27 @@
+{
+    "asset": "6e8b92d22049638459eb7a4c821487ed",
+    "fileName": "019d86ed-b27b-7650-b990-749c2faaf6b2.png",
+    "prompt": "Golden trophy cup for a kids game reward, shiny, cartoon style, 2D vector art, transparent background.",
+    "negativePrompt": "",
+    "model": "67bfd488-3588-4076-9d7b-14710382cf78",
+    "modelName": "Game UI Elements (Flux)",
+    "customSeed": -1,
+    "w3CTraceId": "16fedccbdf54b9b85f7abe61955c6f15",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "pixelateTargetSize": 0,
+    "pixelateKeepImageSize": false,
+    "pixelatePixelBlockSize": 0,
+    "pixelateMode": 0,
+    "pixelateOutlineThickness": 0,
+    "doodles": {
+        "m_Items": []
+    },
+    "upscaleFactor": 0,
+    "dimensions": {
+        "width": 1024,
+        "height": 1024
+    },
+    "spriteSheet": false,
+    "duration": 0.0
+}

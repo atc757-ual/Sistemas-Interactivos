@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using UnityEngine.EventSystems;
 using System.Collections; // Requerido para Corrutinas (IEnumerator)
+using Tobii.Research.Unity;
 
 public abstract class BaseActividad : MonoBehaviour
 {
@@ -58,15 +59,18 @@ public abstract class BaseActividad : MonoBehaviour
     {
         while (!juegoIniciado)
         {
-            bool ojosDetectados = Tobii.Research.Unity.EyeTracker.Instance != null && 
-                                  Tobii.Research.Unity.EyeTracker.Instance.LatestGazeData.Left.GazeOriginValid;
-
-            if (botonIniciar != null)
+            bool ojosDetectados = false;
+            if (EyeTracker.Instance != null)
             {
-                botonIniciar.interactable = ojosDetectados;
+                var gaze = EyeTracker.Instance.LatestGazeData;
+                ojosDetectados = gaze != null && (gaze.Left.GazeOriginValid || gaze.Right.GazeOriginValid);
             }
 
-            if (textoMensajeInicio != null)
+            if (botonIniciar != null) botonIniciar.interactable = ojosDetectados;
+
+            // Dejamos que el hijo maneje el texto si quiere, 
+            // solo escribimos aquí si el hijo no lo está haciendo
+            if (textoMensajeInicio != null && GetType() == typeof(BaseActividad))
             {
                 textoMensajeInicio.text = ojosDetectados ? "¡OJOS LISTOS!\nHaz clic para empezar" : "Buscando tus ojos...\nMira al sensor";
                 textoMensajeInicio.color = ojosDetectados ? Color.cyan : Color.white;
@@ -114,7 +118,7 @@ public abstract class BaseActividad : MonoBehaviour
     public virtual void SalirAlMenu()
     {
         Time.timeScale = 1;
-        SceneManager.LoadScene("MenuPrincipal");
+        SceneManager.LoadScene("Home");
     }
 
     public virtual void MostrarInfo()
@@ -156,12 +160,13 @@ public abstract class BaseActividad : MonoBehaviour
         if (textoPuntuacion != null) textoPuntuacion.text = $"Puntos: {puntuacion}";
     }
 
-    protected void FinalizarActividad(string nombreJuego)
+    protected void FinalizarActividad(string nombreJuego, float precision = 0, bool exito = false, float tiempoTotal = 0)
     {
         if (GestorPaciente.Instance != null)
         {
-            GestorPaciente.Instance.GuardarPartida(nombreJuego, puntuacion);
+            GestorPaciente.Instance.GuardarPartida(nombreJuego, puntuacion, precision, exito, tiempoTotal);
         }
-        SceneManager.LoadScene("PantallaResultados");
+        Time.timeScale = 1;
+        SceneManager.LoadScene("History");
     }
 }
