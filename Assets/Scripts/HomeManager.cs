@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using UnityEngine.EventSystems;
+using System.Collections;
 using System.Collections.Generic;
 
 public class HomeManager : MonoBehaviour
@@ -14,6 +15,10 @@ public class HomeManager : MonoBehaviour
     public Button botonVerResultados;
     public Button botonCerrarSesion;
 
+    [Header("UI Aviso Calibracion")]
+    public GameObject panelAvisoCalibracion;
+    public TMP_Text textoAviso;
+
     [Header("Modal Logout")]
     public GameObject panelModalLogout;
     public Button modalBtnConfirmar;
@@ -21,80 +26,110 @@ public class HomeManager : MonoBehaviour
 
     void Awake()
     {
-        // 1. Asegurar EventSystem
         if (EventSystem.current == null) new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
-        
-        // 2. Vincular cada botón de forma manual y limpia
-        VincularElementosManual();
-
-        // 3. Estado inicial
+        VincularElementosAutomatico();
         if (panelModalLogout != null) panelModalLogout.SetActive(false);
         Input.multiTouchEnabled = false;
     }
 
-    void VincularElementosManual()
+    void VincularElementosAutomatico()
     {
-        // Texto de bienvenida
-        if (textoBienvenida == null) textoBienvenida = GameObject.Find("WelcomeText")?.GetComponent<TMP_Text>();
-
-        // Botones principales
-        if (botonCalibrar == null) botonCalibrar = GameObject.Find("CalibrarBtn")?.GetComponent<Button>();
-        if (botonVerActividades == null) botonVerActividades = GameObject.Find("VerActividadesBtn")?.GetComponent<Button>();
-        if (botonVerResultados == null) botonVerResultados = GameObject.Find("ResultadosBtn")?.GetComponent<Button>();
-        if (botonCerrarSesion == null) botonCerrarSesion = GameObject.Find("LogoutBtn")?.GetComponent<Button>();
-
-        // Modal y sus botones
-        if (panelModalLogout == null) panelModalLogout = BuscarInactivo("ModalCerrarSesion");
+        if (textoBienvenida == null) textoBienvenida = BuscarObj("WelcomeText")?.GetComponent<TMP_Text>();
+        if (botonCalibrar == null) botonCalibrar = BuscarObj("CalibrarBtn")?.GetComponent<Button>();
+        if (botonVerActividades == null) botonVerActividades = BuscarObj("VerActividadesBtn")?.GetComponent<Button>();
+        if (botonVerResultados == null) botonVerResultados = BuscarObj("ResultadosBtn")?.GetComponent<Button>();
+        if (botonCerrarSesion == null) botonCerrarSesion = BuscarObj("LogoutBtn")?.GetComponent<Button>();
         
-        if (panelModalLogout != null)
-        {
-            // Intentamos buscar por ruta exacta si están dentro de "Ventana"
-            if (modalBtnConfirmar == null) modalBtnConfirmar = panelModalLogout.GetComponentsInChildren<Button>(true).Length > 0 ? 
-                System.Array.Find(panelModalLogout.GetComponentsInChildren<Button>(true), b => b.name.Contains("Confirmar")) : null;
-            
-            if (modalBtnCancelar == null) modalBtnCancelar = panelModalLogout.GetComponentsInChildren<Button>(true).Length > 0 ? 
-                System.Array.Find(panelModalLogout.GetComponentsInChildren<Button>(true), b => b.name.Contains("Cancelar")) : null;
-        }
+        if (panelModalLogout == null) panelModalLogout = BuscarObj("ModalCerrarSesion");
+        if (panelAvisoCalibracion == null) panelAvisoCalibracion = BuscarObj("AvisoCalibracion");
     }
 
-    GameObject BuscarInactivo(string nombre)
+    GameObject BuscarObj(string nombre)
     {
         foreach (GameObject go in Resources.FindObjectsOfTypeAll<GameObject>())
         {
-            if (go.name == nombre && !string.IsNullOrEmpty(go.gameObject.scene.name)) return go;
+            if (go.name == nombre && !string.IsNullOrEmpty(go.scene.name)) return go;
         }
         return null;
     }
 
     void Start()
     {
-        // Saludo personalizado con fallback y capitalización
         string nombre = (GestorPaciente.Instance != null && GestorPaciente.Instance.pacienteActual != null) 
-                        ? GestorPaciente.Instance.pacienteActual.nombre : "usuario";
+                        ? GestorPaciente.Instance.pacienteActual.nombre : "Astronauta";
         
-        if (!string.IsNullOrEmpty(nombre))
-        {
-            nombre = char.ToUpper(nombre[0]) + nombre.Substring(1).ToLower();
-        }
-
         if (textoBienvenida != null) textoBienvenida.text = $"¡Hola, {nombre}!";
 
-        // Asignar funciones a los botones con limpieza de listeners previa
         bool haCalibrado = (GestorPaciente.Instance != null && GestorPaciente.Instance.haCalibradoEnEstaSesion);
         
         ConfigurarBoton(botonCalibrar, () => SceneManager.LoadScene("Calibracion"));
-        ConfigurarBoton(botonVerActividades, () => SceneManager.LoadScene("Activities"));
-        ConfigurarBoton(botonVerResultados, () => SceneManager.LoadScene("History"));
         
-        if (botonVerActividades != null) botonVerActividades.interactable = haCalibrado;
+        ConfigurarBotonActividades(haCalibrado);
 
+        ConfigurarBoton(botonVerResultados, () => SceneManager.LoadScene("History"));
         ConfigurarBoton(botonCerrarSesion, () => { if (panelModalLogout != null) panelModalLogout.SetActive(true); });
         
-        ConfigurarBoton(modalBtnCancelar, () => { if (panelModalLogout != null) panelModalLogout.SetActive(false); });
-        ConfigurarBoton(modalBtnConfirmar, () => {
-            GestorPaciente.Instance?.CerrarSesion();
-            SceneManager.LoadScene("Login");
-        });
+        if (panelModalLogout != null)
+        {
+            var buttons = panelModalLogout.GetComponentsInChildren<Button>(true);
+            modalBtnConfirmar = System.Array.Find(buttons, b => b.name.Contains("Confirmar"));
+            modalBtnCancelar = System.Array.Find(buttons, b => b.name.Contains("Cancelar"));
+            
+            ConfigurarBoton(modalBtnCancelar, () => panelModalLogout.SetActive(false));
+            ConfigurarBoton(modalBtnConfirmar, () => {
+                GestorPaciente.Instance?.CerrarSesion();
+                SceneManager.LoadScene("Login");
+            });
+        }
+    }
+
+    void ConfigurarBotonActividades(bool haCalibrado)
+    {
+        if (botonVerActividades == null) return;
+
+        CanvasGroup cg = botonVerActividades.GetComponent<CanvasGroup>() ?? botonVerActividades.gameObject.AddComponent<CanvasGroup>();
+        botonVerActividades.onClick.RemoveAllListeners();
+
+        if (haCalibrado) {
+            cg.alpha = 1.0f;
+            botonVerActividades.onClick.AddListener(() => SceneManager.LoadScene("Activities"));
+        } else {
+            cg.alpha = 0.4f;
+            // Añadimos Hover (disparador al entrar con el mouse)
+            EventTrigger trigger = botonVerActividades.GetComponent<EventTrigger>() ?? botonVerActividades.gameObject.AddComponent<EventTrigger>();
+            trigger.triggers.Clear();
+            
+            EventTrigger.Entry entry = new EventTrigger.Entry();
+            entry.eventID = EventTriggerType.PointerEnter;
+            entry.callback.AddListener((data) => { MostrarAviso(); });
+            trigger.triggers.Add(entry);
+
+            // También mantenemos el clic por si acaso
+            botonVerActividades.onClick.AddListener(MostrarAviso);
+        }
+    }
+
+    void MostrarAviso()
+    {
+        if (panelAvisoCalibracion == null) panelAvisoCalibracion = BuscarObj("AvisoCalibracion");
+        
+        if (panelAvisoCalibracion != null) {
+            panelAvisoCalibracion.transform.SetAsLastSibling(); // Poner delante de todo
+            StopAllCoroutines();
+            StartCoroutine(RutinaAviso());
+            Debug.Log("<color=cyan><b>[UX]</b> Aviso de calibración activado.</color>");
+        } else {
+            Debug.LogWarning("¡Aviso! No encuentro el panel 'AvisoCalibracion' en el Home.");
+        }
+    }
+
+    IEnumerator RutinaAviso()
+    {
+        panelAvisoCalibracion.SetActive(true);
+        if (textoAviso == null && panelAvisoCalibracion != null) textoAviso = panelAvisoCalibracion.GetComponentInChildren<TMP_Text>(true);
+        if (textoAviso != null) textoAviso.text = "¡Casi listo! Debes de <b>Calibrar</b> tus ojos antes de jugar.";
+        yield return new WaitForSeconds(2.0f);
+        panelAvisoCalibracion.SetActive(false);
     }
 
     void ConfigurarBoton(Button b, UnityEngine.Events.UnityAction accion)
@@ -102,51 +137,6 @@ public class HomeManager : MonoBehaviour
         if (b != null) {
             b.onClick.RemoveAllListeners();
             b.onClick.AddListener(accion);
-        }
-    }
-
-    void Update()
-    {
-        // Detectar clics para debug o rescate manual si el EventSystem fallara por jerarquía
-        if (Input.GetMouseButtonDown(0) && EventSystem.current != null)
-        {
-            PointerEventData pointerData = new PointerEventData(EventSystem.current) { position = Input.mousePosition };
-            List<RaycastResult> results = new List<RaycastResult>();
-            EventSystem.current.RaycastAll(pointerData, results);
-            
-            if (results.Count > 0)
-            {
-                // Obtenemos el objeto clicado y sus padres para no fallar si se toca el icono/texto
-                GameObject obj = results[0].gameObject;
-                string n = obj.name.ToLower();
-                string p = obj.transform.parent != null ? obj.transform.parent.name.ToLower() : "";
-                string gp = (obj.transform.parent != null && obj.transform.parent.parent != null) 
-                            ? obj.transform.parent.parent.name.ToLower() : "";
-
-                bool esCalibrar = n.Contains("calibrar") || p.Contains("calibrar") || gp.Contains("calibrar");
-                bool esActividades = n.Contains("actividades") || p.Contains("actividades") || gp.Contains("actividades");
-                bool esResultados = n.Contains("resultados") || p.Contains("resultados") || n.Contains("history") || p.Contains("history");
-                bool esLogout = n.Contains("logout") || p.Contains("logout") || n.Contains("cerrar") || p.Contains("cerrar");
-                bool esConfirmar = n.Contains("confirmar") || p.Contains("confirmar") || n.Contains("btnconfirmar") || p.Contains("btnconfirmar");
-                bool esCancelar = n.Contains("cancelar") || p.Contains("cancelar") || n.Contains("btncancelar") || p.Contains("btncancelar");
-
-                if (esConfirmar) {
-                    GestorPaciente.Instance?.CerrarSesion();
-                    SceneManager.LoadScene("Login");
-                }
-                else if (esCancelar) {
-                    if (panelModalLogout != null) panelModalLogout.SetActive(false);
-                }
-                else if (esCalibrar) SceneManager.LoadScene("Calibracion");
-                else if (esActividades) {
-                    if (GestorPaciente.Instance != null && GestorPaciente.Instance.haCalibradoEnEstaSesion)
-                        SceneManager.LoadScene("Activities");
-                    else
-                        Debug.LogWarning("Acceso denegado: Se requiere calibración previa.");
-                }
-                else if (esResultados) SceneManager.LoadScene("History");
-                else if (esLogout) { if (panelModalLogout != null) panelModalLogout.SetActive(true); }
-            }
         }
     }
 }

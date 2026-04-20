@@ -1,69 +1,75 @@
 using UnityEngine;
 using UnityEditor;
-using UnityEditor.SceneManagement;
+using UnityEngine.UI;
 using TMPro;
 
 public class SceneHealer : EditorWindow
 {
-    [MenuItem("Herramientas/Reparar Scripts de Escena")]
-    public static void RepararScripts()
+    [MenuItem("Herramientas/Limpiar Escena y Duplicados")]
+    public static void CleanScene()
     {
-        int reparados = 0;
-        int totalMissing = 0;
-        GameObject[] todos = GameObject.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        GameObject[] allObjects = Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        int brokenCount = 0;
+        int duplicateCount = 0;
+        bool managerFound = false;
 
-        foreach (var go in todos)
+        foreach (GameObject obj in allObjects)
         {
-            var components = go.GetComponents<Component>();
-            for (int i = 0; i < components.Length; i++)
+            int removed = GameObjectUtility.RemoveMonoBehavioursWithMissingScript(obj);
+            brokenCount += removed;
+
+            var managers = obj.GetComponents<ActivitiesManager>();
+            if (managers.Length > 0)
             {
-                if (components[i] == null)
+                for (int i = 0; i < managers.Length; i++)
                 {
-                    totalMissing++;
-                    string nombre = go.name.ToLower();
-                    bool sanado = false;
-
-                    // Lógica por nombre de objeto y contexto de escena
-                    string activeScene = EditorSceneManager.GetActiveScene().name.ToLower();
-
-                    bool esManager = nombre.Contains("activities") || nombre.Contains("actividades") || 
-                                     nombre.Contains("manager") || nombre.Contains("canvas") || 
-                                     nombre.Contains("main");
-
-                    if (esManager && (activeScene.Contains("activities") || activeScene.Contains("activid")))
-                    {
-                        Undo.RegisterCompleteObjectUndo(go, "Reparar Script");
-                        GameObject.DestroyImmediate(components[i]);
-                        go.AddComponent<ActivitiesManager>();
-                        sanado = true;
-                    }
-                    else if (activeScene.Contains("estrella") || activeScene.Contains("lineal"))
-                    {
-                        // En la escena de EstrellaLineal, el script suele estar en el Canvas o en un Manager
-                        if (esManager || nombre.Contains("estrella") || nombre.Contains("star"))
-                        {
-                            Undo.RegisterCompleteObjectUndo(go, "Reparar Script");
-                            GameObject.DestroyImmediate(components[i]);
-                            go.AddComponent<EstrellaLinealManager>();
-                            sanado = true;
-                        }
-                    }
-
-                    if (sanado)
-                    {
-                        reparados++;
-                        Debug.Log($"<color=green>✓ SceneHealer:</color> Sanado correctamente en {go.name} (Escena: {activeScene})");
-                    }
+                    if (managers[i] == null) continue;
+                    if (!managerFound) managerFound = true;
+                    else { Undo.DestroyObjectImmediate(managers[i]); duplicateCount++; }
                 }
             }
         }
+        EditorUtility.DisplayDialog("Limpieza Completa", $"Eliminados {brokenCount} rotos y {duplicateCount} duplicados.", "OK");
+    }
 
-        if (totalMissing == 0) {
-            EditorUtility.DisplayDialog("Scene Healer", "No se han detectado componentes 'Missing' en esta escena. ¡Todo parece estar sano!", "OK");
-        } else {
-            EditorUtility.DisplayDialog("Scene Healer", 
-                $"Se encontraron {totalMissing} scripts rotos.\nReparados automáticamente: {reparados}.\n\nRevisa la Consola (Ctrl+Shift+C) para ver los nombres de los objetos que siguen rotos.", 
-                "OK");
+    [MenuItem("Herramientas/Crear Panel de Aviso Calibracion")]
+    public static void CreateWarningPanel()
+    {
+        Canvas canvas = Object.FindAnyObjectByType<Canvas>();
+        if (canvas == null) {
+            EditorUtility.DisplayDialog("Error", "No hay un Canvas en la escena.", "OK");
+            return;
         }
+
+        GameObject aviso = new GameObject("AvisoCalibracion");
+        aviso.transform.SetParent(canvas.transform, false);
+        
+        RectTransform rt = aviso.AddComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0.5f, 0);
+        rt.anchorMax = new Vector2(0.5f, 0);
+        rt.pivot = new Vector2(0.5f, 0);
+        rt.anchoredPosition = new Vector2(0, 100);
+        rt.sizeDelta = new Vector2(650, 80);
+
+        Image img = aviso.AddComponent<Image>();
+        img.color = new Color(0, 0, 0, 0.9f);
+
+        GameObject txtObj = new GameObject("Texto");
+        txtObj.transform.SetParent(aviso.transform, false);
+        TMP_Text txt = txtObj.AddComponent<TextMeshProUGUI>();
+        txt.text = "¡Casi listo! Debes <b>Calibrar</b> tus ojos antes de empezar.";
+        txt.fontSize = 28;
+        txt.alignment = TextAlignmentOptions.Center;
+        txt.color = Color.white;
+        
+        RectTransform rtTxt = txtObj.GetComponent<RectTransform>();
+        rtTxt.anchorMin = Vector2.zero;
+        rtTxt.anchorMax = Vector2.one;
+        rtTxt.sizeDelta = Vector2.zero;
+
+        aviso.SetActive(false);
+        Selection.activeGameObject = aviso;
+        
+        EditorUtility.DisplayDialog("Hecho", "Panel 'AvisoCalibracion' creado. ¡Ahora el script ya puede mostrarlo!", "¡Genial!");
     }
 }

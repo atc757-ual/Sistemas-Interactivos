@@ -178,8 +178,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Identificate
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 0cd24b7fbce9b024bb19293e7a1fcf18, type: 2}
-  m_sharedMaterial: {fileID: -298057856966903309, guid: 0cd24b7fbce9b024bb19293e7a1fcf18, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
+  m_sharedMaterial: {fileID: 2164040, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 1417824960}
   m_fontMaterials: []
@@ -1245,7 +1245,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 627.5, y: 278.5}
+  m_AnchoredPosition: {x: 639, y: 339}
   m_SizeDelta: {x: 500, y: 300}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &842734845
@@ -1889,6 +1889,7 @@ MonoBehaviour:
   pacienteActual:
     dni: 
     nombre: 
+    fechaRegistro: 
     fechaSesion: 
     puntuacionTotal: 0
     historialPartidas: []
@@ -2328,7 +2329,7 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1479155904}
   m_LocalRotation: {x: 0.008726558, y: 0, z: 0, w: 0.999962}
-  m_LocalPosition: {x: 0, y: 0, z: 0.5955}
+  m_LocalPosition: {x: 0, y: 0, z: 2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -2338,7 +2339,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 1, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 1847.9248, y: 979.4413}
+  m_AnchoredPosition: {x: 1859, y: 1072}
   m_SizeDelta: {x: 37.0022, y: 36.7861}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1532097711
@@ -2799,8 +2800,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0.0002162, y: -62.9}
-  m_SizeDelta: {x: 572.1, y: 357.2959}
+  m_AnchoredPosition: {x: 4.4453, y: -59.6403}
+  m_SizeDelta: {x: 580.9901, y: 350.7765}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1927960788
 MonoBehaviour:
@@ -2822,7 +2823,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Recuerda que debes calibrar antes de jugar!
+  m_text: "\xA1Recuerda que debes calibrar antes de jugar!"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 0cd24b7fbce9b024bb19293e7a1fcf18, type: 2}
   m_sharedMaterial: {fileID: -298057856966903309, guid: 0cd24b7fbce9b024bb19293e7a1fcf18, type: 2}
@@ -2888,7 +2889,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 43.348587, y: 225.80904, z: 41.33249, w: 99.160446}
+  m_margin: {x: 43.348587, y: 225.80904, z: 46.666718, w: 99.160446}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0

@@ -49,9 +49,11 @@ public class HistoryManager : MonoBehaviour
         }
 
         var p = GestorPaciente.Instance.pacienteActual;
+        string nombreCap = !string.IsNullOrEmpty(p.nombre) ? 
+            char.ToUpper(p.nombre[0]) + p.nombre.Substring(1).ToLower() : "Astronauta";
 
         // Feedback Personalizado
-        if (feedbackPrincipal != null) feedbackPrincipal.text = "¡Buen trabajo, " + p.nombre + "!";
+        if (feedbackPrincipal != null) feedbackPrincipal.text = "¡Buen trabajo, " + nombreCap + "!";
         if (feedbackSecundario != null) feedbackSecundario.text = "DNI: " + p.dni;
 
         // Estadísticas Reales

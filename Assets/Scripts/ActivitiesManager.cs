@@ -6,29 +6,33 @@ using System.Collections.Generic;
 
 public class ActivitiesManager : MonoBehaviour
 {
-    [Header("Botones de Actividades")]
-    public Button botonPlaneta;
-    public Button botonMeteoro;
-    public Button botonCometa;
-    public Button botonEstrella;
-    public Button botonVolver;
+    [Header("UI DE ACTIVIDADES")]
+    public Button btnPlaneta;
+    public Button btnMeteoro;
+    public Button btnCometa;
+    public Button btnEstrella;
+    public Button btnVolver;
 
     void Awake()
     {
-        if (EventSystem.current == null) new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
-        Canvas c = Object.FindFirstObjectByType<Canvas>();
-        if (c != null && c.GetComponent<GraphicRaycaster>() == null) c.gameObject.AddComponent<GraphicRaycaster>();
+        if (EventSystem.current == null) 
+        {
+            new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
+        }
 
-        VincularBotones();
+        VincularElementosManual();
+        Input.multiTouchEnabled = false;
     }
 
     void Start()
     {
-        ConfigurarBoton(botonPlaneta, () => SceneManager.LoadScene("PlanetaCircular"));
-        ConfigurarBoton(botonMeteoro, () => SceneManager.LoadScene("MeteoroZigzag"));
-        ConfigurarBoton(botonCometa, () => SceneManager.LoadScene("CometaCuadrado"));
-        ConfigurarBoton(botonEstrella, () => SceneManager.LoadScene("EstrellaLineal"));
-        ConfigurarBoton(botonVolver, () => SceneManager.LoadScene("Home"));
+        ConfigurarBoton(btnPlaneta, () => SceneManager.LoadScene("PlanetaCircular"));
+        ConfigurarBoton(btnMeteoro, () => SceneManager.LoadScene("MeteoroZigzag"));
+        ConfigurarBoton(btnCometa, () => SceneManager.LoadScene("CometaCuadrado"));
+        ConfigurarBoton(btnEstrella, () => SceneManager.LoadScene("EstrellaLineal"));
+        ConfigurarBoton(btnVolver, () => SceneManager.LoadScene("Home"));
+
+        Debug.Log("<color=cyan><b>[Activities]</b> Navegación lista.</color>");
     }
 
     void ConfigurarBoton(Button b, UnityEngine.Events.UnityAction accion)
@@ -39,46 +43,30 @@ public class ActivitiesManager : MonoBehaviour
         }
     }
 
-    void Update()
+    void VincularElementosManual()
     {
-        if (Input.GetMouseButtonDown(0) && EventSystem.current != null)
-        {
-            PointerEventData eventData = new PointerEventData(EventSystem.current) { position = Input.mousePosition };
-            List<RaycastResult> results = new List<RaycastResult>();
-            EventSystem.current.RaycastAll(eventData, results);
-
-            if (results.Count > 0)
-            {
-                GameObject obj = results[0].gameObject;
-                string n = obj.name.ToLower();
-                string p = obj.transform.parent != null ? obj.transform.parent.name.ToLower() : "";
-
-                bool esEstrella = n.Contains("estrella") || p.Contains("estrella") || n.Contains("lineal") || p.Contains("lineal");
-
-                if (n.Contains("planeta") || p.Contains("planeta")) SceneManager.LoadScene("PlanetaCircular");
-                else if (n.Contains("meteoro") || p.Contains("meteoro")) SceneManager.LoadScene("MeteoroZigzag");
-                else if (n.Contains("cometa") || p.Contains("cometa")) SceneManager.LoadScene("CometaCuadrado");
-                else if (esEstrella) SceneManager.LoadScene("EstrellaLineal");
-                else if (n.Contains("volver") || p.Contains("volver") || n.Contains("back") || p.Contains("back")) SceneManager.LoadScene("Home");
-            }
-        }
+        if (btnPlaneta == null) btnPlaneta = BuscarBoton("BtnPlanetaCircular") ?? BuscarPorContenido("planeta");
+        if (btnMeteoro == null) btnMeteoro = BuscarBoton("BtnMeteoroZigZag") ?? BuscarPorContenido("meteoro");
+        if (btnCometa == null) btnCometa = BuscarBoton("BtnCometaCuadrado") ?? BuscarPorContenido("cometa");
+        if (btnEstrella == null) btnEstrella = BuscarBoton("BtnEstrellaLineal") ?? BuscarPorContenido("estrella") ?? BuscarPorContenido("lineal");
+        if (btnVolver == null) btnVolver = BuscarBoton("VolverBtn") ?? BuscarPorContenido("volver");
     }
 
-    void VincularBotones()
+    Button BuscarBoton(string nombre)
     {
-        // Optimizamos: Buscamos botones solo dentro del Canvas, no en toda la memoria
-        Canvas c = Object.FindFirstObjectByType<Canvas>();
-        if (c == null) return;
-
-        Button[] todos = c.GetComponentsInChildren<Button>(true);
-        foreach (var b in todos)
+        foreach (Button b in Resources.FindObjectsOfTypeAll<Button>())
         {
-            string n = b.name.ToLower();
-            if (n.Contains("planeta")) botonPlaneta = b;
-            else if (n.Contains("meteoro")) botonMeteoro = b;
-            else if (n.Contains("cometa")) botonCometa = b;
-            else if (n.Contains("estrella") || n.Contains("lineal")) botonEstrella = b;
-            else if (n.Contains("volver") || n.Contains("back")) botonVolver = b;
+            if (b.name == nombre && !string.IsNullOrEmpty(b.gameObject.scene.name)) return b;
         }
+        return null;
+    }
+
+    Button BuscarPorContenido(string palabra)
+    {
+        foreach (Button b in Resources.FindObjectsOfTypeAll<Button>())
+        {
+            if (b.name.ToLower().Contains(palabra.ToLower()) && !string.IsNullOrEmpty(b.gameObject.scene.name)) return b;
+        }
+        return null;
     }
 }
