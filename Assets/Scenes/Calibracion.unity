@@ -152,7 +152,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: 0, y: -9.345703}
+  m_AnchoredPosition: {x: 0, y: -9.345764}
   m_SizeDelta: {x: 0, y: 100}
   m_Pivot: {x: 0.48268196, y: -2.7930658}
 --- !u!1 &52787645
@@ -914,8 +914,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.001606, y: 0.0081854}
-  m_SizeDelta: {x: 1920, y: 1140.7}
+  m_AnchoredPosition: {x: 0, y: 0.0034351}
+  m_SizeDelta: {x: 1920, y: 1080.2}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &332461144
 MonoBehaviour:
@@ -1625,7 +1625,7 @@ Canvas:
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
-  m_SortingOrder: 10
+  m_SortingOrder: 1
   m_TargetDisplay: 0
 --- !u!224 &881738392
 RectTransform:
@@ -2549,7 +2549,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}
   m_AnchorMax: {x: 0.5, y: 0}
-  m_AnchoredPosition: {x: -800, y: 1050}
+  m_AnchoredPosition: {x: -720, y: 930}
   m_SizeDelta: {x: 200, y: 64}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!114 &1487039422
@@ -3409,14 +3409,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.5377358, g: 0.47432357, b: 0.47432357, a: 1}
+  m_Color: {r: 0.8396226, g: 0.82774115, b: 0.82774115, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 3f22819ac520dd04fa92aa2210adf440, type: 3}
+  m_Sprite: {fileID: 2664692435823196461, guid: ea11fa7c593934f408f8fef2f10b98ca, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -3687,6 +3687,8 @@ MonoBehaviour:
   subHeaderSecundario: {fileID: 0}
   statusPanel: {fileID: 0}
   bottomButtonBar: {fileID: 0}
+  overlayInicio: {fileID: 0}
+  panelDetalle: {fileID: 0}
   puntoCalibracion: {fileID: 0}
   textoInstrucciones: {fileID: 0}
   textoProgreso: {fileID: 0}
