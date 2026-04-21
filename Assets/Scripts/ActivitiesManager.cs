@@ -7,10 +7,11 @@ using System.Collections.Generic;
 public class ActivitiesManager : MonoBehaviour
 {
     [Header("UI DE ACTIVIDADES")]
-    public Button btnPlaneta;
+    //public Button btnPlaneta;
     public Button btnMeteoro;
     public Button btnCometa;
     public Button btnEstrella;
+    public Button btnSatelite;
     public Button btnVolver;
 
     void Awake()
@@ -26,10 +27,11 @@ public class ActivitiesManager : MonoBehaviour
 
     void Start()
     {
-        ConfigurarBoton(btnPlaneta, () => SceneManager.LoadScene("PlanetaCircular"));
+        //ConfigurarBoton(btnPlaneta, () => SceneManager.LoadScene("SateliteOrbita"));
         ConfigurarBoton(btnMeteoro, () => SceneManager.LoadScene("MeteoroZigzag"));
         ConfigurarBoton(btnCometa, () => SceneManager.LoadScene("CometaCuadrado"));
         ConfigurarBoton(btnEstrella, () => SceneManager.LoadScene("EstrellaLineal"));
+        ConfigurarBoton(btnSatelite, () => SceneManager.LoadScene("SateliteOrbita"));
         ConfigurarBoton(btnVolver, () => SceneManager.LoadScene("Home"));
 
         Debug.Log("<color=cyan><b>[Activities]</b> Navegación lista.</color>");
@@ -45,10 +47,11 @@ public class ActivitiesManager : MonoBehaviour
 
     void VincularElementosManual()
     {
-        if (btnPlaneta == null) btnPlaneta = BuscarBoton("BtnPlanetaCircular") ?? BuscarPorContenido("planeta");
+        //if (btnPlaneta == null) btnPlaneta = BuscarBoton("BtnPlanetaCircular") ?? BuscarPorContenido("planeta");
         if (btnMeteoro == null) btnMeteoro = BuscarBoton("BtnMeteoroZigZag") ?? BuscarPorContenido("meteoro");
         if (btnCometa == null) btnCometa = BuscarBoton("BtnCometaCuadrado") ?? BuscarPorContenido("cometa");
         if (btnEstrella == null) btnEstrella = BuscarBoton("BtnEstrellaLineal") ?? BuscarPorContenido("estrella") ?? BuscarPorContenido("lineal");
+        if (btnSatelite == null) btnSatelite = BuscarBoton("BtnSateliteOrbita") ?? BuscarPorContenido("satelite") ?? BuscarPorContenido("orbita");
         if (btnVolver == null) btnVolver = BuscarBoton("VolverBtn") ?? BuscarPorContenido("volver");
     }
 
