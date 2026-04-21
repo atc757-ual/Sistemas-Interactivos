@@ -23,7 +23,6 @@ public class Calibracion : MonoBehaviour
     [Header("UI Controls")]
     public Image puntoCalibracion;
     public TMP_Text textoInstrucciones;
-    public TMP_Text textoProgreso;
     public Button botonIniciarManual;
     public Button botonVolver;
 
@@ -84,7 +83,6 @@ public class Calibracion : MonoBehaviour
 
         puntoCalibracion = puntoCalibracion ?? BuscarObj("PuntoCalibracion")?.GetComponent<Image>();
         textoInstrucciones = textoInstrucciones ?? BuscarObj("SubHeader_Instruccion")?.GetComponent<TMP_Text>();
-        textoProgreso = textoProgreso ?? BuscarObj("ProgresoText")?.GetComponent<TMP_Text>();
         botonIniciarManual = botonIniciarManual ?? BuscarObj("IniciarManual")?.GetComponent<Button>();
         botonVolver = botonVolver ?? BuscarObj("VolverBtn")?.GetComponent<Button>();
         
@@ -121,7 +119,7 @@ public class Calibracion : MonoBehaviour
     }
 
     GameObject BuscarObj(string n) {
-        foreach (var go in Resources.FindObjectsOfTypeAll<GameObject>()) 
+        foreach (var go in Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None)) 
             if (go.name == n && !string.IsNullOrEmpty(go.gameObject.scene.name)) return go;
         return null;
     }
@@ -148,22 +146,17 @@ public class Calibracion : MonoBehaviour
 
     void CalcularPuntosProgramaticos()
     {
-        // Márgenes: 5% a los lados/abajo, pero 15% arriba para evitar el Header
-        float minX = 0.05f, maxX = 0.95f, minY = 0.05f, maxY = 0.85f;
+        // Márgenes del 10% en todos los lados como pediste
+        float minX = 0.1f, maxX = 0.9f, minY = 0.1f, maxY = 0.9f;
 
         float midX = 0.5f;
-        float midY = (minY + maxY) / 2f;
-        float innerX1 = Mathf.Lerp(minX, maxX, 0.25f);
-        float innerX2 = Mathf.Lerp(minX, maxX, 0.75f);
-        float innerY_TopSafe = Mathf.Lerp(minY, maxY, 0.75f);
-
-        // Posiciones UNITY (Abajo=0)
+        float midY = 0.5f;
+        
+        // 9 puntos bien distribuidos (Grid 3x3)
         Vector2[] posUnity = {
-            new Vector2(minX, maxY), new Vector2(maxX, maxY), // "Arriba" segura
-            new Vector2(minX, minY), new Vector2(maxX, minY), // Abajo
-            new Vector2(midX, midY),                         // Centro
-            new Vector2(innerX1, midY), new Vector2(innerX2, midY), 
-            new Vector2(midX, innerY_TopSafe)
+            new Vector2(minX, maxY), new Vector2(midX, maxY), new Vector2(maxX, maxY), // Arriba
+            new Vector2(minX, midY), new Vector2(midX, midY), new Vector2(maxX, midY), // Medio
+            new Vector2(minX, minY), new Vector2(midX, minY), new Vector2(maxX, minY)  // Abajo
         };
 
         mapaPuntos = new PuntoMapeado[posUnity.Length];
@@ -294,84 +287,70 @@ public class Calibracion : MonoBehaviour
                 for (int i = 3; i > 0; i--)
                 {
                     textoCounter.text = i.ToString();
-                    yield return new WaitForSeconds(0.8f);
+                    yield return new WaitForSeconds(0.7f);
                 }
+                
+                // --- OPTIMIZACIÓN: Iniciamos el hilo MIENTRAS dice YA ---
+                BarajarPuntos(); 
+                ConfigurarInterfazCalibracion(activa: true);
+                
+                try { 
+                    var safetyThread = new CalibrationThread(EyeTracker.Instance.EyeTrackerInterface, true);
+                    safetyThread.LeaveCalibrationMode();
+                    safetyThread.StopThread();
+                } catch { }
+
+                var calibrationThread = new CalibrationThread(EyeTracker.Instance.EyeTrackerInterface, true);
+                
                 textoCounter.text = "¡YA!";
-                yield return new WaitForSeconds(0.8f);
+                yield return new WaitForSeconds(0.4f); // Delay reducido
                 textoCounter.gameObject.SetActive(false);
-            }
-            else if (textoProgreso != null) // Fallback
-            {
-                textoProgreso.gameObject.SetActive(true);
-                for (int i = 3; i > 0; i--)
-                {
-                    textoProgreso.text = i.ToString();
-                    yield return new WaitForSeconds(0.8f);
-                }
-                textoProgreso.text = "¡YA!";
-                yield return new WaitForSeconds(0.8f);
-                textoProgreso.gameObject.SetActive(false);
+
+                while (!calibrationThread.Running) yield return null;
+                yield return EjecutarCalibracion(calibrationThread);
             }
 
-            // --- LIMPIEZA DE PANELES DE INICIO ---
-            if (overlayInicio != null) overlayInicio.SetActive(false);
-            if (panelDetalle != null) panelDetalle.SetActive(false);
+            yield return MostrarResultados(precisionActual >= 75f);
+        }
+    }
 
-            saltarFaseDeteccion = false; 
-            BarajarPuntos(); 
-            ConfigurarInterfazCalibracion(activa: true);
+    IEnumerator EjecutarCalibracion(CalibrationThread thread)
+    {
+        try 
+        {
+            thread.EnterCalibrationMode();
             
-            try { 
-                var safetyThread = new CalibrationThread(EyeTracker.Instance.EyeTrackerInterface, false);
-                safetyThread.LeaveCalibrationMode();
-                safetyThread.StopThread();
-            } catch { /* Ignorar si no había sesión */ }
+            if (puntoCalibracion != null) puntoCalibracion.gameObject.SetActive(true);
+            for (int i = 0; i < mapaPuntos.Length; i++)
+            {
+                var p = mapaPuntos[i];
+                puntoCalibracion.rectTransform.anchorMin = p.posUnity;
+                puntoCalibracion.rectTransform.anchorMax = p.posUnity;
+                puntoCalibracion.rectTransform.anchoredPosition = Vector2.zero;
+                puntoCalibracion.gameObject.SetActive(true);
 
-            var thread = new CalibrationThread(EyeTracker.Instance.EyeTrackerInterface, true);
-            while (!thread.Running) yield return null;
+                yield return new WaitForSeconds(tiempoMovimiento);
+                
+                thread.CollectData(new CalibrationThread.Point(p.posTobii.x, p.posTobii.y));
+                yield return new WaitForSeconds(tiempoRecoleccion);
+            }
+
+            if (puntoCalibracion != null) puntoCalibracion.gameObject.SetActive(false);
+            Debug.Log("<color=yellow>Calibración: Calculando resultados...</color>");
+            var result = thread.ComputeAndApply();
             
-            try 
-            {
-                thread.EnterCalibrationMode();
-                
-                if (puntoCalibracion != null) puntoCalibracion.gameObject.SetActive(true);
-                for (int i = 0; i < mapaPuntos.Length; i++)
-                {
-                    var p = mapaPuntos[i];
-                    if (textoProgreso != null) textoProgreso.text = "Punto " + (i + 1) + " / " + mapaPuntos.Length;
-                    
-                    puntoCalibracion.rectTransform.anchorMin = p.posUnity;
-                    puntoCalibracion.rectTransform.anchorMax = p.posUnity;
-                    puntoCalibracion.rectTransform.anchoredPosition = Vector2.zero;
-                    puntoCalibracion.gameObject.SetActive(true);
-
-                    yield return new WaitForSeconds(tiempoMovimiento);
-                    
-                    thread.CollectData(new CalibrationThread.Point(p.posTobii.x, p.posTobii.y));
-                    yield return new WaitForSeconds(tiempoRecoleccion);
-                }
-
-                if (puntoCalibracion != null) puntoCalibracion.gameObject.SetActive(false);
-                if (textoProgreso != null) textoProgreso.gameObject.SetActive(false);
-
-                Debug.Log("<color=yellow>Calibración: Calculando resultados...</color>");
-                var result = thread.ComputeAndApply();
-                
-                float timeout = 0f;
-                while (!result.Ready && timeout < 3f) {
-                    timeout += Time.deltaTime;
-                    yield return null;
-                }
-
-                procesarResultadosYGuardar(result);
-            }
-            finally 
-            {
-                thread.LeaveCalibrationMode();
-                thread.StopThread();
+            float timeout = 0f;
+            while (!result.Ready && timeout < 3f) {
+                timeout += Time.deltaTime;
+                yield return null;
             }
 
-            yield return MostrarResultados(precisionActual >= 80f);
+            procesarResultadosYGuardar(result);
+        }
+        finally 
+        {
+            thread.LeaveCalibrationMode();
+            thread.StopThread();
         }
     }
 
@@ -414,7 +393,7 @@ public class Calibracion : MonoBehaviour
                     puntosConDatos++;
                     Debug.Log($"<color=green>Punto {iPunto}:</color> OK ({muestrasPunto} muestras). Error: {errorMedioPunto:F3}");
                 } else {
-                    errorTotalAcumulado += 0.5f;
+                    errorTotalAcumulado += 0.3f; // Ajustado: Antes 0.5f para ser más permisivo
                     totalMuestrasOjos++;
                     Debug.Log($"<color=red>Punto {iPunto}:</color> SIN DATOS. El sensor no vio ojos aquí.");
                 }
@@ -437,7 +416,7 @@ public class Calibracion : MonoBehaviour
         if (GestorPaciente.Instance != null)
         {
              float tiempoTotal = Time.time - tiempoInicioActividad;
-             GestorPaciente.Instance.GuardarPartida("Calibración", 100, precisionActual, precisionActual >= 80, tiempoTotal);
+             GestorPaciente.Instance.GuardarPartida("Calibración", 100, 1, precisionActual, precisionActual >= 75, tiempoTotal);
         }
     }
 
@@ -445,8 +424,8 @@ public class Calibracion : MonoBehaviour
     {
         if (_canvasPrincipal == null) return;
         
-        HashSet<string> permitidos = new HashSet<string> { "VolverBtn", "ProgresoText", "PuntoCalibracion", "Background" };
-        HashSet<string> listaNegra = new HashSet<string> { "ResultPanel", "PuntoCalibracion", "ProgresoText", "PuntoCalibracion_AutoGenerated", "Counter" };
+        HashSet<string> permitidos = new HashSet<string> { "PuntoCalibracion", "Background" };
+        HashSet<string> listaNegra = new HashSet<string> { "ResultPanel", "PuntoCalibracion", "PuntoCalibracion_AutoGenerated", "Counter" };
 
         foreach (Transform child in _canvasChildrenCache)
         {
@@ -499,14 +478,14 @@ public class Calibracion : MonoBehaviour
             
             if (textoResultadoDesc != null) 
             {
-                string infoPerc = $"\n\n<size=80%>Precisión: <b>{precisionActual:F0}%</b> (Mínimo: 80%)</size>";
+                string infoPerc = $"\n\n<size=80%>Precisión: <b>{precisionActual:F0}%</b> (Mínimo: 75%)</size>";
                 
                 if (exito) {
                     textoResultadoDesc.color = new Color(0.4f, 1f, 0.4f);
                     textoResultadoDesc.text = "¡Excelente! El visor está perfectamente calibrado." + infoPerc;
                 } else {
                     textoResultadoDesc.color = new Color(1f, 0.4f, 0.4f);
-                    textoResultadoDesc.text = "¡Oh no! Necesitamos más precisión. Intenta llegar al 80%." + infoPerc;
+                    textoResultadoDesc.text = "¡Oh no! Necesitamos más precisión. Intenta llegar al 75%." + infoPerc;
                 }
             }
             

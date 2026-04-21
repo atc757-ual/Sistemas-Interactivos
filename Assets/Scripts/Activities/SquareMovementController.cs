@@ -113,6 +113,8 @@ public class SquareMovementController : BaseActividad
     private float _tiempoTranscurrido;
     private float _segundosMirando;         // Total de segundos con gaze en target
     private float _dwellOnTarget;           // Segundos de fijación en la esquina actual
+    private int _framesTotales;             // Nueva: para precisión total
+    private int _framesTargeteados;         // Nueva: para precisión total
 
     // Votación de precisión por ventana de 1 segundo
     private float _timerUI_Precision;
@@ -275,7 +277,7 @@ public class SquareMovementController : BaseActividad
             if (titleRes == null)   titleRes   = overlayResult.transform.Find("TitleRes")?.GetComponent<TMP_Text>();
             if (subRes == null)     subRes     = overlayResult.transform.Find("Subres")?.GetComponent<TMP_Text>();
             if (percentRes == null) percentRes = overlayResult.transform.Find("PercentRes")?.GetComponent<TMP_Text>();
-            if (btnAgain == null)   btnAgain   = overlayResult.transform.Find("StartButton")?.GetComponent<Button>();
+            if (btnAgain == null)   btnAgain   = (overlayResult.transform.Find("BtnAgain") ?? overlayResult.transform.Find("StartButton"))?.GetComponent<Button>();
             overlayResult.SetActive(false);
         }
 
@@ -296,7 +298,7 @@ public class SquareMovementController : BaseActividad
         if (directo != null) return directo;
 
         string low = nombre.ToLower();
-        foreach (Transform t in Resources.FindObjectsOfTypeAll<Transform>())
+        foreach (Transform t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
             if (t.name.Trim().ToLower() == low && !string.IsNullOrEmpty(t.gameObject.scene.name))
                 return t.gameObject;
@@ -353,6 +355,8 @@ public class SquareMovementController : BaseActividad
         _esquinaActual           = 0;
         _esquinaAnterior         = -1;
         _enTransicion            = false;
+        _framesTotales           = 0;
+        _framesTargeteados       = 0;
 
         // Registrar aparición inicial
         IniciarMetricasEsquina();
@@ -369,6 +373,9 @@ public class SquareMovementController : BaseActividad
     {
         base.Update();
         if (_juegoFinalizado) return;
+
+        // Desplazar fondo SIEMPRE para que la escena se sienta viva
+        DesplazarFondo();
 
         if (!juegoIniciado && !juegoPausado && !_enConteo)
         {
@@ -387,7 +394,6 @@ public class SquareMovementController : BaseActividad
                 return;
             }
 
-            DesplazarFondo();
             GestionarMovimientoCuadrado();
             ProcesarGaze();
             AplicarBrilloObjetivo();
@@ -400,31 +406,46 @@ public class SquareMovementController : BaseActividad
         _juegoFinalizado = true;
         Time.timeScale = 1;
 
+        // --- GUARDADO AUTOMÁTICO ---
+        float precisionFinal = (_framesTotales > 0) ? (_framesTargeteados / (float)_framesTotales) * 100f : 0;
+        float avanceFinal = (_segundosMirando / _tiempoTranscurrido) * 100f;
+        int nivelFinal = Mathf.FloorToInt(_segundosMirando / 10f) + 1;
+        this.puntuacion = Mathf.FloorToInt(avanceFinal * 10);
+
+        if (GestorPaciente.Instance != null)
+        {
+            GestorPaciente.Instance.GuardarPartida("Cometa Cuadrado", this.puntuacion, nivelFinal, precisionFinal, true, _tiempoTranscurrido);
+        }
+        // ---------------------------
+
         if (overlayResult != null)
         {
             overlayResult.SetActive(true);
             
-            float precisionFinal = (_votosTotalesPrecision > 0) ? (_votosPositivosPrecision / (float)_votosTotalesPrecision) * 100f : 0;
-            
             if (titleRes != null) titleRes.text = "¡SESIÓN COMPLETADA!";
-            if (percentRes != null) percentRes.text = precisionFinal.ToString("F0") + "%";
-            if (subRes != null) subRes.text = $"Tiempo total: {duracionSesion}s\nSeguimiento: {_segundosMirando:F1}s";
+            if (percentRes != null) percentRes.text = avanceFinal.ToString("F0") + "%";
             
+            if (subRes != null) 
+            {
+                subRes.text = $"<line-height=140%><size=110%>¡Excelente enfoque!</size>\n" +
+                              $"Has llegado al <color=#FFD700><b>Nivel {nivelFinal}</b></color>\n" +
+                              $"<size=85%>Calidad visual: <color=#00FFFF>{precisionFinal:F0}%</color></size></line-height>";
+            }
+
             if (btnAgain != null)
             {
                 btnAgain.onClick.RemoveAllListeners();
                 btnAgain.onClick.AddListener(() => {
-                    FinalizarActividad("Cometa Cuadrado", precisionFinal, true, _tiempoTranscurrido);
+                    UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
                 });
                 
                 var txtBtn = btnAgain.GetComponentInChildren<TMP_Text>();
-                if (txtBtn != null) txtBtn.text = "GUARDAR Y SALIR";
+                if (txtBtn != null) txtBtn.text = "¡OTRA VEZ!";
             }
         }
         else
         {
-            float prec = (_votosTotalesPrecision > 0) ? (_votosPositivosPrecision / (float)_votosTotalesPrecision) * 100f : 0;
-            FinalizarActividad("Cometa Cuadrado", prec, true, _tiempoTranscurrido);
+            UnityEngine.SceneManagement.SceneManager.LoadScene("Home");
         }
     }
 
@@ -633,25 +654,30 @@ public class SquareMovementController : BaseActividad
         _votosPositivosPrecision++;
 
         // Hit-test sobre el RectTransform del objetivo
-        const float padding = 60f;
-        Vector3 worldPos = objetivo.position;
-        Vector2 tamano   = Vector2.Scale(objetivo.rect.size, objetivo.lossyScale)
-                         + new Vector2(padding, padding);
+        // Conversión exacta a píxeles de pantalla
+        Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(null, objetivo.position);
+        float padding = 80f;
+        Vector2 size = Vector2.Scale(objetivo.rect.size, objetivo.lossyScale) + new Vector2(padding, padding);
+
         Rect hitBox = new Rect(
-            worldPos.x - tamano.x / 2f,
-            worldPos.y - tamano.y / 2f,
-            tamano.x, tamano.y);
+            screenPoint.x - size.x / 2f,
+            screenPoint.y - size.y / 2f,
+            size.x, size.y);
 
         bool mirandoAlObjetivo = hitBox.Contains(gazeScreen);
 
+        _framesTotales++;
         if (mirandoAlObjetivo)
+        {
             _segundosMirando += Time.deltaTime;
+            _framesTargeteados++;
+        }
 
         // Registrar latencia sacádica (primer gaze tras llegar a esquina)
         if (!_gazeAterrizó && mirandoAlObjetivo)
         {
             _saccadeLatency = Time.time - _tiempoApareció;
-            _landingError   = Vector2.Distance(gazeScreen, new Vector2(worldPos.x, worldPos.y));
+            _landingError   = Vector2.Distance(gazeScreen, screenPoint);
             _gazeAterrizó   = true;
         }
     }
@@ -688,16 +714,18 @@ public class SquareMovementController : BaseActividad
         }
 
         // Progreso de nivel (cada 15s de seguimiento = un ciclo)
-        float avance = (_segundosMirando / 15f) * 100f;
+        // AVANCE RELATIVO AL NIVEL (Cada 10s sube un nivel)
+        float progresoNivel = (_segundosMirando % 10.001f) / 10f * 100f;
+        int nivelActual = Mathf.FloorToInt(_segundosMirando / 10f) + 1;
 
         if (avanceText != null)
         {
-            avanceText.text = (avance >= 100f)
-                ? "Lvl " + (Mathf.FloorToInt(avance / 100f) + 1)
-                : Mathf.RoundToInt(avance % 100f).ToString() + "%";
+            avanceText.text = (nivelActual > 1)
+                ? "Lvl " + nivelActual
+                : progresoNivel.ToString("F0") + "%";
         }
 
         if (barFill != null)
-            barFill.fillAmount = (avance % 100f) / 100f;
+            barFill.fillAmount = (_segundosMirando % 10f) / 10f;
     }
 }

@@ -21,6 +21,7 @@ public class Partida
     public float precision; // Nueva: 0 a 100
     public bool exito;      // Nueva: si llegó al final
     public float tiempoJuego; // Nueva: en segundos
+    public int nivel;       // NUEVO: Nivel alcanzado (1, 2, 3...)
     public string fecha;
 }
 
@@ -123,7 +124,7 @@ public class GestorPaciente : MonoBehaviour
         GuardarTodosLosDatos();
     }
 
-    public void GuardarPartida(string nombreJuego, int puntuacion, float precision = 0, bool exito = false, float tiempo = 0)
+    public void GuardarPartida(string nombreJuego, int puntuacion, int nivel, float precision = 0, bool exito = false, float tiempo = 0)
     {
         if (pacienteActual == null) return;
 
@@ -134,6 +135,7 @@ public class GestorPaciente : MonoBehaviour
             precision = precision,
             exito = exito,
             tiempoJuego = tiempo,
+            nivel = nivel,
             fecha = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
         };
 

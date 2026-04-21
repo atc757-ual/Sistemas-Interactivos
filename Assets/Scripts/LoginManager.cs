@@ -46,9 +46,9 @@ public class LoginManager : MonoBehaviour
 
     GameObject BuscarInactivo(string nombre)
     {
-        foreach (GameObject go in Resources.FindObjectsOfTypeAll<GameObject>())
+        foreach (GameObject go in Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
-            if (go.name == nombre && !string.IsNullOrEmpty(go.gameObject.scene.name)) return go;
+            if (go.name.Trim() == nombre && !string.IsNullOrEmpty(go.gameObject.scene.name)) return go;
         }
         return null;
     }

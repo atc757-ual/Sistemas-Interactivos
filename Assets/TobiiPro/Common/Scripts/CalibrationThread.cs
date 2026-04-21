@@ -401,10 +401,17 @@ namespace Tobii.Research.Unity
                             break;
 
                         case MethodResult.CommandType.Enter:
-                            if (screenBasedCalibration != null)
-                                screenBasedCalibration.EnterCalibrationMode();
-                            else
-                                hmdBasedCalibration.EnterCalibrationMode();
+                            try
+                            {
+                                if (screenBasedCalibration != null)
+                                    screenBasedCalibration.EnterCalibrationMode();
+                                else
+                                    hmdBasedCalibration.EnterCalibrationMode();
+                            }
+                            catch (System.Exception e)
+                            {
+                                UnityEngine.Debug.LogWarning("[Tobii] Já em modo de calibração ou erro ao entrar: " + e.Message);
+                            }
 
                             stopWatch.Stop();
                             currentResult.Finished(CalibrationStatus.Success, (int)stopWatch.ElapsedMilliseconds);
@@ -435,10 +442,17 @@ namespace Tobii.Research.Unity
                             break;
 
                         case MethodResult.CommandType.Leave:
-                            if (screenBasedCalibration != null)
-                                screenBasedCalibration.LeaveCalibrationMode();
-                            else
-                                hmdBasedCalibration.LeaveCalibrationMode();
+                            try
+                            {
+                                if (screenBasedCalibration != null)
+                                    screenBasedCalibration.LeaveCalibrationMode();
+                                else
+                                    hmdBasedCalibration.LeaveCalibrationMode();
+                            }
+                            catch (System.Exception e)
+                            {
+                                UnityEngine.Debug.LogWarning("[Tobii] Erro ao sair do modo de calibração: " + e.Message);
+                            }
 
                             stopWatch.Stop();
                             currentResult.Finished(CalibrationStatus.Success, (int)stopWatch.ElapsedMilliseconds);

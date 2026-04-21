@@ -46,7 +46,7 @@ public class HomeManager : MonoBehaviour
 
     GameObject BuscarObj(string nombre)
     {
-        foreach (GameObject go in Resources.FindObjectsOfTypeAll<GameObject>())
+        foreach (GameObject go in Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
             if (go.name.Trim() == nombre && !string.IsNullOrEmpty(go.scene.name)) return go;
         }

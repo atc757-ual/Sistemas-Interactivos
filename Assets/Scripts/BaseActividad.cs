@@ -160,11 +160,11 @@ public abstract class BaseActividad : MonoBehaviour
         if (textoPuntuacion != null) textoPuntuacion.text = $"Puntos: {puntuacion}";
     }
 
-    protected void FinalizarActividad(string nombreJuego, float precision = 0, bool exito = false, float tiempoTotal = 0)
+    protected void FinalizarActividad(string nombreJuego, int nivel = 1, float precision = 0, bool exito = false, float tiempoTotal = 0)
     {
         if (GestorPaciente.Instance != null)
         {
-            GestorPaciente.Instance.GuardarPartida(nombreJuego, puntuacion, precision, exito, tiempoTotal);
+            GestorPaciente.Instance.GuardarPartida(nombreJuego, puntuacion, nivel, precision, exito, tiempoTotal);
         }
         Time.timeScale = 1;
         SceneManager.LoadScene("History");

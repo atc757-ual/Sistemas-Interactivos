@@ -54,7 +54,7 @@ public class ActivitiesManager : MonoBehaviour
 
     Button BuscarBoton(string nombre)
     {
-        foreach (Button b in Resources.FindObjectsOfTypeAll<Button>())
+        foreach (Button b in Object.FindObjectsByType<Button>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
             if (b.name.Trim() == nombre && !string.IsNullOrEmpty(b.gameObject.scene.name)) return b;
         }
@@ -63,7 +63,7 @@ public class ActivitiesManager : MonoBehaviour
 
     Button BuscarPorContenido(string palabra)
     {
-        foreach (Button b in Resources.FindObjectsOfTypeAll<Button>())
+        foreach (Button b in Object.FindObjectsByType<Button>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
             if (b.name.ToLower().Contains(palabra.ToLower()) && !string.IsNullOrEmpty(b.gameObject.scene.name)) return b;
         }
