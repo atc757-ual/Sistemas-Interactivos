@@ -321,7 +321,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Estrella Lineal
+  m_text: "Satelite \xD3rbital"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
   m_sharedMaterial: {fileID: 2164040, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
@@ -3626,7 +3626,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -2422329993826766579, guid: 2991aa786bd716f49ab57666a7896629, type: 3}
+  m_Sprite: {fileID: -4294281933613106851, guid: 82d0d4959c362405bb40a52510ccd02a, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
