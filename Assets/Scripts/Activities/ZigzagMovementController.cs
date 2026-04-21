@@ -87,6 +87,10 @@ public class ZigzagMovementController : BaseActividad
     [Tooltip("Si true, el objetivo regresa al borde izquierdo al salir por la derecha.")]
     public bool loopHorizontal = true;
 
+    [Header("Configuración de Tiempo")]
+    public float duracionSesion = 60f;
+    private bool _juegoFinalizado = false;
+
     // =========================================================================
     // ESTADO INTERNO
     // =========================================================================
@@ -295,6 +299,7 @@ public class ZigzagMovementController : BaseActividad
     protected override void Update()
     {
         base.Update();
+        if (_juegoFinalizado) return;
 
         if (!juegoIniciado && !juegoPausado && !_enConteo)
         {
@@ -306,10 +311,51 @@ public class ZigzagMovementController : BaseActividad
         {
             _tiempoTranscurrido += Time.deltaTime;
             ActualizarUI();
+
+            if (_tiempoTranscurrido >= duracionSesion)
+            {
+                FinalizarSesionLocal();
+                return;
+            }
+
             DesplazarFondo();
             MoverObjetivo();
             ProcesarGaze();
             AplicarBrilloObjetivo();
+        }
+    }
+
+    void FinalizarSesionLocal()
+    {
+        juegoIniciado = false;
+        _juegoFinalizado = true;
+        Time.timeScale = 1;
+
+        if (overlayResult != null)
+        {
+            overlayResult.SetActive(true);
+            
+            float precisionFinal = (_votosTotalesPrecision > 0) ? (_votosPositivosPrecision / (float)_votosTotalesPrecision) * 100f : 0;
+            
+            if (titleRes != null) titleRes.text = "¡SESIÓN COMPLETADA!";
+            if (percentRes != null) percentRes.text = precisionFinal.ToString("F0") + "%";
+            if (subRes != null) subRes.text = $"Tiempo total: {duracionSesion}s\nSeguimiento: {_segundosMirando:F1}s";
+            
+            if (btnAgain != null)
+            {
+                btnAgain.onClick.RemoveAllListeners();
+                btnAgain.onClick.AddListener(() => {
+                    FinalizarActividad("Meteoro Zigzag", precisionFinal, true, _tiempoTranscurrido);
+                });
+                
+                var txtBtn = btnAgain.GetComponentInChildren<TMP_Text>();
+                if (txtBtn != null) txtBtn.text = "GUARDAR Y SALIR";
+            }
+        }
+        else
+        {
+            float prec = (_votosTotalesPrecision > 0) ? (_votosPositivosPrecision / (float)_votosTotalesPrecision) * 100f : 0;
+            FinalizarActividad("Meteoro Zigzag", prec, true, _tiempoTranscurrido);
         }
     }
 
