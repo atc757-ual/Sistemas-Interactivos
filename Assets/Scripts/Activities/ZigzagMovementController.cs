@@ -82,7 +82,7 @@ public class ZigzagMovementController : BaseActividad
     public float horizontalSpeed = 150f;
 
     [Tooltip("Velocidad del scroll de fondo en unidades UI/s.")]
-    public float velocidadFondo = 100f;
+    public float velocidadFondo = 80f;
 
     [Tooltip("Si true, el objetivo regresa al borde izquierdo al salir por la derecha.")]
     public bool loopHorizontal = true;
@@ -202,7 +202,7 @@ public class ZigzagMovementController : BaseActividad
         string low = nombre.ToLower();
         foreach (Transform t in Resources.FindObjectsOfTypeAll<Transform>())
         {
-            if (t.name.ToLower() == low && !string.IsNullOrEmpty(t.gameObject.scene.name))
+            if (t.name.Trim().ToLower() == low && !string.IsNullOrEmpty(t.gameObject.scene.name))
                 return t.gameObject;
         }
         return null;
@@ -300,6 +300,9 @@ public class ZigzagMovementController : BaseActividad
     {
         base.Update();
         if (_juegoFinalizado) return;
+
+        // Desplazar fondo SIEMPRE para que la escena se sienta viva
+        DesplazarFondo();
 
         if (!juegoIniciado && !juegoPausado && !_enConteo)
         {

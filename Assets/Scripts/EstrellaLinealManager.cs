@@ -30,7 +30,7 @@ public class EstrellaLinealManager : BaseActividad
     [Header("Ajustes de Movimiento")]
     public float velocidadStar = 300f;
     public float velocidadDistractor = 400f;
-    public float velocidadFondo = 100f; // <--- Nuevo: Velocidad del scroll
+    public float velocidadFondo = 80f; // <--- Sincronizado con SquareMovement
     public float zigzagAmplitud = 150f;
     public float zigzagFrecuencia = 3f;
 
@@ -107,7 +107,7 @@ public class EstrellaLinealManager : BaseActividad
         if (obj != null) return obj;
         string busqueda = nombre.ToLower();
         foreach (var t in Resources.FindObjectsOfTypeAll<Transform>()) {
-            if (t.name.ToLower() == busqueda && !string.IsNullOrEmpty(t.gameObject.scene.name)) return t.gameObject;
+            if (t.name.Trim().ToLower() == busqueda && !string.IsNullOrEmpty(t.gameObject.scene.name)) return t.gameObject;
         }
         return null;
     }
@@ -180,6 +180,17 @@ public class EstrellaLinealManager : BaseActividad
     {
         base.Update();
         if (_juegoFinalizado) return;
+
+        // Scroll de fondo SIEMPRE para que la escena se sienta viva
+        if (_bgSegments.Count > 0)
+        {
+            foreach (var bg in _bgSegments) MoverFondo(bg);
+        }
+        else if (backgroundScroll != null)
+        {
+            MoverFondo(backgroundScroll);
+        }
+
         if (!juegoIniciado && !juegoPausado && !_enConteo) { ManejarPestañeoInicio(); return; }
 
         if (juegoIniciado && !juegoPausado)
@@ -194,7 +205,8 @@ public class EstrellaLinealManager : BaseActividad
                 return;
             }
 
-            MoverMundo();
+            // MoverMundo(); // Movido parcialmente arriba
+            MoverObjetosAdicionales(); // Nuevo método para el resto
             ProcesarSeguimientoOcular();
             AplicarBrilloEstrella();
         }
@@ -285,18 +297,8 @@ public class EstrellaLinealManager : BaseActividad
         if (barFill != null) barFill.fillAmount = (avanceTotal % 100f) / 100f;
     }
 
-    void MoverMundo()
+    void MoverObjetosAdicionales()
     {
-        // 1. SCROLL DE FONDO (Hacia la izquierda para dar sensación de vuelo a la derecha)
-        if (_bgSegments.Count > 0)
-        {
-            foreach (var bg in _bgSegments) MoverFondo(bg);
-        }
-        else if (backgroundScroll != null) // Fallback si la lista está vacía
-        {
-            MoverFondo(backgroundScroll);
-        }
-
         // 2. MOVIMIENTO DE ÚNICA ESTRELLA
         if (_convoyEstrellas != null)
         {

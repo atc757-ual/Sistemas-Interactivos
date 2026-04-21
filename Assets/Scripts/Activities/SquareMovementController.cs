@@ -298,7 +298,7 @@ public class SquareMovementController : BaseActividad
         string low = nombre.ToLower();
         foreach (Transform t in Resources.FindObjectsOfTypeAll<Transform>())
         {
-            if (t.name.ToLower() == low && !string.IsNullOrEmpty(t.gameObject.scene.name))
+            if (t.name.Trim().ToLower() == low && !string.IsNullOrEmpty(t.gameObject.scene.name))
                 return t.gameObject;
         }
         return null;

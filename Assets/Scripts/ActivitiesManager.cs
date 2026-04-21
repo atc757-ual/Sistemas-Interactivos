@@ -56,7 +56,7 @@ public class ActivitiesManager : MonoBehaviour
     {
         foreach (Button b in Resources.FindObjectsOfTypeAll<Button>())
         {
-            if (b.name == nombre && !string.IsNullOrEmpty(b.gameObject.scene.name)) return b;
+            if (b.name.Trim() == nombre && !string.IsNullOrEmpty(b.gameObject.scene.name)) return b;
         }
         return null;
     }

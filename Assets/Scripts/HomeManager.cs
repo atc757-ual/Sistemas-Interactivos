@@ -48,7 +48,7 @@ public class HomeManager : MonoBehaviour
     {
         foreach (GameObject go in Resources.FindObjectsOfTypeAll<GameObject>())
         {
-            if (go.name == nombre && !string.IsNullOrEmpty(go.scene.name)) return go;
+            if (go.name.Trim() == nombre && !string.IsNullOrEmpty(go.scene.name)) return go;
         }
         return null;
     }
@@ -87,7 +87,8 @@ public class HomeManager : MonoBehaviour
     {
         if (botonVerActividades == null) return;
 
-        CanvasGroup cg = botonVerActividades.GetComponent<CanvasGroup>() ?? botonVerActividades.gameObject.AddComponent<CanvasGroup>();
+        CanvasGroup cg = botonVerActividades.GetComponent<CanvasGroup>();
+        if (cg == null) cg = botonVerActividades.gameObject.AddComponent<CanvasGroup>();
         botonVerActividades.onClick.RemoveAllListeners();
 
         if (haCalibrado) {

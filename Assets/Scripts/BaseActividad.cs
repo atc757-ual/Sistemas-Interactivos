@@ -131,12 +131,12 @@ public abstract class BaseActividad : MonoBehaviour
 
     protected virtual void Update()
     {
-        // --- PUENTE DE EMERGENCIA PARA ACTIVIDADES ---
-        if (Input.GetMouseButtonDown(0))
+        // --- PUENTE DE EMERGENCIA PARA ACTIVIDADES (Migrado a New Input System) ---
+        if (UnityEngine.InputSystem.Pointer.current != null && UnityEngine.InputSystem.Pointer.current.press.wasPressedThisFrame)
         {
             if (EventSystem.current == null) return;
             PointerEventData eventData = new PointerEventData(EventSystem.current);
-            eventData.position = Input.mousePosition;
+            eventData.position = UnityEngine.InputSystem.Pointer.current.position.ReadValue();
             var results = new System.Collections.Generic.List<RaycastResult>();
             EventSystem.current.RaycastAll(eventData, results);
 
