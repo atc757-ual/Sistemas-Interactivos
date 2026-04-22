@@ -91,11 +91,21 @@ public class HomeManager : MonoBehaviour
         if (cg == null) cg = botonVerActividades.gameObject.AddComponent<CanvasGroup>();
         botonVerActividades.onClick.RemoveAllListeners();
 
+        Debug.Log($"<color=yellow>[HomeManager]</color> Estado calibración: {haCalibrado}");
+
         if (haCalibrado) {
             cg.alpha = 1.0f;
+            botonVerActividades.interactable = true;
             botonVerActividades.onClick.AddListener(() => SceneManager.LoadScene("Activities"));
+            
+            EventTrigger trigger = botonVerActividades.GetComponent<EventTrigger>();
+            if (trigger != null) {
+                trigger.triggers.Clear();
+                Destroy(trigger);
+            }
         } else {
             cg.alpha = 0.4f;
+            botonVerActividades.interactable = true;
             // Añadimos Hover (disparador al entrar con el mouse)
             EventTrigger trigger = botonVerActividades.GetComponent<EventTrigger>() ?? botonVerActividades.gameObject.AddComponent<EventTrigger>();
             trigger.triggers.Clear();

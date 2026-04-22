@@ -296,7 +296,11 @@ public class Calibracion : MonoBehaviour
                 
                 try { 
                     var safetyThread = new CalibrationThread(EyeTracker.Instance.EyeTrackerInterface, true);
-                    safetyThread.LeaveCalibrationMode();
+                    var leaveReq = safetyThread.LeaveCalibrationMode();
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    while (!leaveReq.Ready && sw.ElapsedMilliseconds < 800) {
+                        System.Threading.Thread.Sleep(5);
+                    }
                     safetyThread.StopThread();
                 } catch { }
 
@@ -349,7 +353,13 @@ public class Calibracion : MonoBehaviour
         }
         finally 
         {
-            thread.LeaveCalibrationMode();
+            var leaveReq = thread.LeaveCalibrationMode();
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            // Esperamos síncronamente (spin wait) un instante para asegurar que
+            // el thread alcance a procesar el "Leave" antes de destruirlo.
+            while (!leaveReq.Ready && sw.ElapsedMilliseconds < 800) {
+                System.Threading.Thread.Sleep(5);
+            }
             thread.StopThread();
         }
     }
@@ -551,6 +561,23 @@ public class Calibracion : MonoBehaviour
             if (exito) SceneManager.LoadScene("Home");
             else yield return new WaitForSeconds(2f);
         }
+    }
+
+    void OnDestroy()
+    {
+        try 
+        {
+            if (EyeTracker.Instance != null && EyeTracker.Instance.EyeTrackerInterface != null) 
+            {
+                var safeThread = new CalibrationThread(EyeTracker.Instance.EyeTrackerInterface, true);
+                var leaveReq = safeThread.LeaveCalibrationMode();
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                while (!leaveReq.Ready && sw.ElapsedMilliseconds < 800) {
+                    System.Threading.Thread.Sleep(5);
+                }
+                safeThread.StopThread();
+            }
+        } catch { }
     }
 
     public void Volver() { SceneManager.LoadScene("Home"); }
