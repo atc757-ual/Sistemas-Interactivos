@@ -109,6 +109,9 @@ public class EstrellaLinealManager : BaseActividad
         if (overlayResult == null) overlayResult = BuscarObjetoPotente("OverlayResult");
         if (panelDetalle == null) panelDetalle = BuscarObjetoPotente("detalle");
         
+        // Vincular el fondo para el scroll infinito
+        if (backgroundScroll == null) backgroundScroll = BuscarObjetoPotente("BG")?.GetComponent<RectTransform>() ?? BuscarObjetoPotente("Background")?.GetComponent<RectTransform>();
+        
         // Forzar activación del inicio para que el Tobii pueda empezar a buscar ojos
         if (overlayInicio != null) overlayInicio.SetActive(true);
 
@@ -158,10 +161,13 @@ public class EstrellaLinealManager : BaseActividad
             _bgSegments.Clear();
             _bgSegments.Add(backgroundScroll);
 
+            // Si el ancho es 0 (a veces pasa en el primer frame), usamos el ancho de pantalla como backup
+            float anchoFondo = backgroundScroll.rect.width > 0 ? backgroundScroll.rect.width : Screen.width;
+
             GameObject bgClon = Instantiate(backgroundScroll.gameObject, backgroundScroll.parent);
             bgClon.name = "Background_Loop";
             RectTransform rtBg = bgClon.GetComponent<RectTransform>();
-            rtBg.anchoredPosition = new Vector2(backgroundScroll.rect.width, 0);
+            rtBg.anchoredPosition = new Vector2(anchoFondo, 0);
             
             _bgSegments.Add(rtBg);
 
@@ -303,7 +309,7 @@ public class EstrellaLinealManager : BaseActividad
         {
             Debug.LogWarning("<color=red><b>[ERROR]</b></color> No se encontró OverlayResult. Volviendo al Home.");
             Time.timeScale = 1.0f;
-            UnityEngine.SceneManagement.SceneManager.LoadScene("Home");
+            UnityEngine.SceneManagement.SceneManager.LoadScene("Activities");
         }
     }
 

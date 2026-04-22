@@ -96,7 +96,12 @@ public class SateliteOrbitaManager : BaseActividad
             titleRes = titleRes ?? overlayResult.transform.Find("TitleRes")?.GetComponent<TMP_Text>();
             subRes = subRes ?? overlayResult.transform.Find("Subres")?.GetComponent<TMP_Text>();
             percentRes = percentRes ?? overlayResult.transform.Find("PercentRes")?.GetComponent<TMP_Text>();
-            btnAgain = btnAgain ?? overlayResult.transform.Find("StartButton")?.GetComponent<Button>();
+            btnAgain = btnAgain ?? overlayResult.transform.Find("StartButton")?.GetComponent<Button>() ?? overlayResult.transform.Find("BtnAgain")?.GetComponent<Button>();
+            if (btnAgain != null) 
+            {
+                btnAgain.onClick.RemoveAllListeners();
+                btnAgain.onClick.AddListener(IniciarJuego);
+            }
             overlayResult.SetActive(false);
         }
     }

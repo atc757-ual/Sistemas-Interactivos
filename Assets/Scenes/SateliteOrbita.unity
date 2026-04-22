@@ -2340,7 +2340,7 @@ GameObject:
   - component: {fileID: 1073341879}
   - component: {fileID: 1073341878}
   m_Layer: 0
-  m_Name: EstrellaLinealManager
+  m_Name: SateliteOrbitaManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

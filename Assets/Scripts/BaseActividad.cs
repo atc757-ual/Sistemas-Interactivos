@@ -30,11 +30,11 @@ public abstract class BaseActividad : MonoBehaviour
     {
         // Auto-link components if missing
         if (panelInfo == null) panelInfo = GetComponentInChildren<PanelInfo>(true);
-        if (botonInfo == null) botonInfo = GameObject.Find("InfoButton")?.GetComponent<Button>();
-        if (botonPausar == null) botonPausar = GameObject.Find("PauseButton")?.GetComponent<Button>();
-        if (botonSalir == null) botonSalir = GameObject.Find("BackButton")?.GetComponent<Button>();
-        if (botonIniciar == null) botonIniciar = GameObject.Find("StartButton")?.GetComponent<Button>();
-        if (textoMensajeInicio == null) textoMensajeInicio = GameObject.Find("StartMessage")?.GetComponent<TMP_Text>();
+        if (botonInfo == null) botonInfo = GameObject.Find("InfoButton")?.GetComponent<Button>() ?? GameObject.Find("BotonInfo")?.GetComponent<Button>();
+        if (botonPausar == null) botonPausar = GameObject.Find("PauseButton")?.GetComponent<Button>() ?? GameObject.Find("BotonPausa")?.GetComponent<Button>();
+        if (botonSalir == null) botonSalir = GameObject.Find("BackButton")?.GetComponent<Button>() ?? GameObject.Find("VolverBtn")?.GetComponent<Button>() ?? GameObject.Find("SalirBtn")?.GetComponent<Button>();
+        if (botonIniciar == null) botonIniciar = GameObject.Find("StartButton")?.GetComponent<Button>() ?? GameObject.Find("BotonInicio")?.GetComponent<Button>();
+        if (textoMensajeInicio == null) textoMensajeInicio = GameObject.Find("StartMessage")?.GetComponent<TMP_Text>() ?? GameObject.Find("MensajeInicio")?.GetComponent<TMP_Text>();
 
         if (botonIniciar != null) botonIniciar.onClick.AddListener(IniciarJuego);
         if (botonPausar != null) botonPausar.onClick.AddListener(AlternarPausa);
@@ -118,7 +118,7 @@ public abstract class BaseActividad : MonoBehaviour
     public virtual void SalirAlMenu()
     {
         Time.timeScale = 1;
-        SceneManager.LoadScene("Home");
+        SceneManager.LoadScene("Activities");
     }
 
     public virtual void MostrarInfo()
