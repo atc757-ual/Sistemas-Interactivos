@@ -17,6 +17,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/EstrellaLineal.unity
     guid: a79cd98584dfeec4b9e760d5151a97a2
+  - enabled: 1
+    path: Assets/Scenes/SateliteOrbita.unity
+    guid: d8f0a1b2c3e4f5a678901234567890bc
   - enabled: 0
     path: Assets/Scenes/ActividadBurbujas.unity
     guid: 6855a59f919750543976289f2d9b064c
