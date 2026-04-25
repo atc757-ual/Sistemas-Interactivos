@@ -14,6 +14,7 @@ public abstract class BaseActividad : MonoBehaviour
     public TMP_Text textoMensajeInicio; // NEW: Para "Pestañea para empezar"
     public Button botonPausar;
     public Button botonSalir;
+    public Button botonReiniciar;
     public Button botonInfo;
     public PanelInfo panelInfo;
     public GameObject overlayInicio;
@@ -22,6 +23,7 @@ public abstract class BaseActividad : MonoBehaviour
     public Sprite iconPlay;
     public Sprite iconPause;
 
+    protected bool usarValidacionOjos = true; // Permite desactivar el bloqueo por ojos
     protected int puntuacion = 0;
     protected bool juegoIniciado = false;
     protected bool juegoPausado = false;
@@ -34,9 +36,11 @@ public abstract class BaseActividad : MonoBehaviour
         if (botonPausar == null) botonPausar = GameObject.Find("PauseButton")?.GetComponent<Button>() ?? GameObject.Find("BotonPausa")?.GetComponent<Button>();
         if (botonSalir == null) botonSalir = GameObject.Find("BackButton")?.GetComponent<Button>() ?? GameObject.Find("VolverBtn")?.GetComponent<Button>() ?? GameObject.Find("SalirBtn")?.GetComponent<Button>();
         if (botonIniciar == null) botonIniciar = GameObject.Find("StartButton")?.GetComponent<Button>() ?? GameObject.Find("BotonInicio")?.GetComponent<Button>();
+        if (botonReiniciar == null) botonReiniciar = GameObject.Find("RetryButton")?.GetComponent<Button>() ?? GameObject.Find("ReiniciarBtn")?.GetComponent<Button>();
         if (textoMensajeInicio == null) textoMensajeInicio = GameObject.Find("StartMessage")?.GetComponent<TMP_Text>() ?? GameObject.Find("MensajeInicio")?.GetComponent<TMP_Text>();
-
+        
         if (botonIniciar != null) botonIniciar.onClick.AddListener(IniciarJuego);
+        if (botonReiniciar != null) botonReiniciar.onClick.AddListener(ReiniciarJuego);
         if (botonPausar != null) botonPausar.onClick.AddListener(AlternarPausa);
         if (botonSalir != null) botonSalir.onClick.AddListener(SalirAlMenu);
         if (botonInfo != null && panelInfo != null) botonInfo.onClick.AddListener(MostrarInfo);
@@ -66,7 +70,11 @@ public abstract class BaseActividad : MonoBehaviour
                 ojosDetectados = gaze != null && (gaze.Left.GazeOriginValid || gaze.Right.GazeOriginValid);
             }
 
-            if (botonIniciar != null) botonIniciar.interactable = ojosDetectados;
+            if (botonIniciar != null) 
+            {
+                if (usarValidacionOjos) botonIniciar.interactable = ojosDetectados;
+                else botonIniciar.interactable = true;
+            }
 
             // Dejamos que el hijo maneje el texto si quiere, 
             // solo escribimos aquí si el hijo no lo está haciendo
@@ -113,6 +121,12 @@ public abstract class BaseActividad : MonoBehaviour
         {
             t.text = juegoPausado ? "CONTINUAR" : "PAUSAR";
         }
+    }
+
+    public virtual void ReiniciarJuego()
+    {
+        Time.timeScale = 1;
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     public virtual void SalirAlMenu()
