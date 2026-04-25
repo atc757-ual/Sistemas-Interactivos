@@ -8,8 +8,10 @@ public class GeneradorLaberinto : MonoBehaviour
     [Header("Configuración")]
     public int columnas = 19;
     public int filas = 11;
-    public float anchoCelda = 90f;
-    public Color colorPared = Color.white; // Paredes blancas para que resalten
+    public float anchoCelda = 60f;
+    [Range(0.1f, 1.0f)]
+    public float grosorPared = 0.2f; // 0.2 = Paredes muy finas, 1.0 = Bloques completos
+    public Color colorPared = Color.white; 
     public Color colorCamino = new Color(0, 0, 0, 0);
 
 
@@ -92,8 +94,9 @@ public class GeneradorLaberinto : MonoBehaviour
 
     void DibujarLaberinto()
     {
+        float offsetVertical = -30f; // Bajar un poquito
         float offsetStartX = -(columnas * anchoCelda) / 2f;
-        float offsetStartY = -(filas * anchoCelda) / 2f;
+        float offsetStartY = -(filas * anchoCelda) / 2f + offsetVertical;
 
         for (int x = 0; x < columnas; x++) {
             for (int y = 0; y < filas; y++) {
@@ -103,16 +106,19 @@ public class GeneradorLaberinto : MonoBehaviour
                 celda.name = (_grid[x, y] == 1) ? "Path" : "Wall";
 
                 RectTransform rt = celda.GetComponent<RectTransform>();
-                
-                // Paredes al 100% para que no haya huecos entre ellas
-                if (_grid[x, y] == 0) {
-                    rt.sizeDelta = new Vector2(anchoCelda + 0.5f, anchoCelda + 0.5f);
-                } else {
-                    rt.sizeDelta = new Vector2(anchoCelda + 1, anchoCelda + 1);
-                }
-
                 rt.anchoredPosition = new Vector2(offsetStartX + x * anchoCelda + anchoCelda/2, offsetStartY + y * anchoCelda + anchoCelda/2);
-
+                
+                // TODO EL LABERINTO UNIFORME
+                float thickness = anchoCelda * 0.2f; // Grosor 20% uniforme
+                rt.sizeDelta = new Vector2(anchoCelda + 1, thickness); // Líneas horizontales perfectas
+                
+                // Si es vertical, invertimos
+                if (y + 1 < filas && _grid[x, y+1] == 0) {
+                     // Solo un ejemplo, simplificamos a bloques sólidos si prefieres uniformidad total
+                }
+                
+                // REVERSIÓN A BLOQUES SÓLIDOS LIMPIOS PARA UNIFORMIDAD TOTAL
+                rt.sizeDelta = new Vector2(anchoCelda + 1, anchoCelda + 1);
                 if (_grid[x, y] == 1) _objetosCamino[new Vector2Int(x, y)] = celda;
             }
         }
@@ -120,8 +126,9 @@ public class GeneradorLaberinto : MonoBehaviour
 
     void ConfigurarMarcadores(Vector2Int inicio, Vector2Int meta)
     {
+        float offsetVertical = -30f; // Sincronizado con DibujarLaberinto
         float offsetStartX = -(columnas * anchoCelda) / 2f;
-        float offsetStartY = -(filas * anchoCelda) / 2f;
+        float offsetStartY = -(filas * anchoCelda) / 2f + offsetVertical;
 
         // Auto-crear marcadores si son nulos (Fallback)
         if (puntoInicio == null) {
@@ -139,10 +146,13 @@ public class GeneradorLaberinto : MonoBehaviour
             puntoInicio.sizeDelta = new Vector2(anchoCelda, anchoCelda);
             puntoInicio.anchoredPosition = new Vector2(offsetStartX + inicio.x * anchoCelda + anchoCelda/2, offsetStartY + inicio.y * anchoCelda + anchoCelda/2);
             
-            // Inicio transparente con texto START
+            // Inicio: Transparente -> 4 Rayas Blancas -> Texto Blanco
             Image imgIni = puntoInicio.GetComponent<Image>();
-            if (imgIni != null) imgIni.color = new Color(0, 0, 0, 0); 
-            CrearTexto(puntoInicio.gameObject, "START", Color.green);
+            if (imgIni != null) imgIni.color = Color.clear; 
+            var txtObj = CrearTexto(puntoInicio.gameObject, "INICIO", Color.white);
+            // Mover a la IZQUIERDA y separar de las barras
+            txtObj.GetComponent<RectTransform>().anchoredPosition = new Vector2(-45, 0);
+            CrearRayas(puntoInicio.gameObject, Color.white, 10); // Desplazar barras a la derecha (+10)
 
             puntoInicio.SetAsLastSibling();
         }
@@ -151,23 +161,45 @@ public class GeneradorLaberinto : MonoBehaviour
             puntoMeta.anchoredPosition = new Vector2(offsetStartX + meta.x * anchoCelda + anchoCelda/2, offsetStartY + meta.y * anchoCelda + anchoCelda/2);
             puntoMeta.gameObject.name = "Goal_Point"; 
             
-            // Meta transparente con texto EXIT
+            // Salida: Transparente -> 4 Rayas Blancas -> Texto Blanco
             Image imgMeta = puntoMeta.GetComponent<Image>();
-            if (imgMeta != null) imgMeta.color = new Color(0, 0, 0, 0.2f); // Casi invisible
-            CrearTexto(puntoMeta.gameObject, "EXIT", Color.yellow);
+            if (imgMeta != null) imgMeta.color = Color.clear; 
+            var txtObj = CrearTexto(puntoMeta.gameObject, "SALIDA", Color.white);
+            // Mover a la DERECHA y separar de las barras
+            txtObj.GetComponent<RectTransform>().anchoredPosition = new Vector2(45, 0);
+            CrearRayas(puntoMeta.gameObject, Color.white, -10); // Desplazar barras a la izquierda (-10)
             
             puntoMeta.SetAsLastSibling();
         }
     }
 
-    void CrearTexto(GameObject parent, string s, Color c)
+    void CrearRayas(GameObject parent, Color c, float offsetX = 0)
+    {
+        // 5 Rayas horizontales, más estrechas y con espacio
+        for (int i = 0; i < 5; i++) {
+            GameObject raya = new GameObject("Raya");
+            raya.transform.SetParent(parent.transform, false);
+            Image img = raya.AddComponent<Image>();
+            img.color = new Color(c.r, c.g, c.b, 0.6f); 
+            RectTransform rt = raya.GetComponent<RectTransform>();
+            // Más estrechas (0.6f) para dejar aire
+            rt.sizeDelta = new Vector2(anchoCelda * 0.6f, 7f); 
+            rt.anchoredPosition = new Vector2(offsetX, (i - 2f) * 14);
+            rt.localRotation = Quaternion.identity; 
+        }
+    }
+
+    GameObject CrearTexto(GameObject parent, string s, Color c)
     {
         GameObject t = new GameObject("Label");
         t.transform.SetParent(parent.transform, false);
         var txt = t.AddComponent<TextMeshProUGUI>();
-        txt.text = s; txt.fontSize = 20; txt.color = c; txt.alignment = TextAlignmentOptions.Center;
+        txt.text = s; txt.fontSize = 18; txt.color = c; txt.alignment = TextAlignmentOptions.Center;
+        txt.fontStyle = FontStyles.Bold; // Texto más grueso
         RectTransform rt = t.GetComponent<RectTransform>();
         rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.sizeDelta = Vector2.zero;
+        rt.localRotation = Quaternion.Euler(0, 0, -90); // Rotar de lado
+        return t;
     }
 
     void GenerarCamino(int x, int y)
