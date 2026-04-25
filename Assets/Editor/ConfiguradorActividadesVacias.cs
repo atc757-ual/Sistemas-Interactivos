@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 public class ConfiguradorActividadesVacias
 {
-    [MenuItem("Tobii Pro/2. Generar Escenas de Prueba para Actividades")]
+    // [MenuItem("Tobii Pro/2. Generar Escenas de Prueba para Actividades")]
     public static void GenerarEscenasPrueba()
     {
         // Las escenas que el SelectorActividades necesita llamar

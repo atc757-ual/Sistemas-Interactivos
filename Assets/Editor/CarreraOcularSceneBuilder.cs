@@ -7,7 +7,7 @@ using UnityEditor.SceneManagement;
 
 public class CarreraOcularSceneBuilder : EditorWindow
 {
-    [MenuItem("Tools/Vision Therapy/Build Carrera Ocular Scene")]
+    // [MenuItem("Tools/Vision Therapy/Build Carrera Ocular Scene")]
     public static void BuildScene()
     {
         // 1. Create New Scene

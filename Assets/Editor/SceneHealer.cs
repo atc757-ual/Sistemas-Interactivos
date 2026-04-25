@@ -5,7 +5,7 @@ using TMPro;
 
 public class SceneHealer : EditorWindow
 {
-    [MenuItem("Herramientas/Limpiar Escena y Duplicados")]
+    // [MenuItem("Herramientas/Limpiar Escena y Duplicados")]
     public static void CleanScene()
     {
         GameObject[] allObjects = Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -32,7 +32,7 @@ public class SceneHealer : EditorWindow
         EditorUtility.DisplayDialog("Limpieza Completa", $"Eliminados {brokenCount} rotos y {duplicateCount} duplicados.", "OK");
     }
 
-    [MenuItem("Herramientas/Crear Panel de Aviso Calibracion")]
+    // [MenuItem("Herramientas/Crear Panel de Aviso Calibracion")]
     public static void CreateWarningPanel()
     {
         Canvas canvas = Object.FindAnyObjectByType<Canvas>();

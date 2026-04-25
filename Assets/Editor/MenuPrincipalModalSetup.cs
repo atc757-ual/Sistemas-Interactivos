@@ -5,7 +5,7 @@ using TMPro;
 
 public class MenuPrincipalModalSetup
 {
-    [MenuItem("Tobii Pro/1. Generar Modal de Cerrar Sesión en Menú", false, 1)]
+    // [MenuItem("Tobii Pro/1. Generar Modal de Cerrar Sesión en Menú", false, 1)]
     public static void CrearModalEnScena()
     {
         var menuPrincipal = Object.FindFirstObjectByType<HomeManager>();

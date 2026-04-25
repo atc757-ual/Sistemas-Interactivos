@@ -16,7 +16,7 @@ public static class TestReportGenerator
     private const string REPORT_DIR   = "Assets/Tests/Reports";
     private const string REPORT_PREFIX = "Fase1_Report";
 
-    [MenuItem(MENU_PATH)]
+    // [MenuItem(MENU_PATH)]
     public static void GenerarReporte()
     {
         // Asegurar que el directorio de reportes existe

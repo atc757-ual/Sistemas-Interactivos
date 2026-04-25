@@ -11,6 +11,13 @@ public class GlobosManager : BaseActividad
     public float tamanoGlobo = 100f;
     public Color colorResaltado = Color.yellow;
     
+    [Header("UI & Feedback")]
+    public TMP_Text scoreText;
+    public TMP_Text timerText;
+    public GameObject overlayGanaste;
+    public GameObject overlayGameOver;
+    public Image flashDano;
+    
     [Header("Referencias")]
     public RectTransform contenedorGlobos;
     public GameObject overlayResultado;

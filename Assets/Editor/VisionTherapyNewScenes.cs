@@ -7,7 +7,7 @@ using UnityEditor.SceneManagement;
 
 public class VisionTherapyNewScenes : EditorWindow
 {
-    [MenuItem("Tools/Vision Therapy/Build Globos Scene")]
+    // [MenuItem("Tools/Vision Therapy/Build Globos Scene")]
     public static void BuildGlobos()
     {
         Scene newScene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
@@ -38,10 +38,32 @@ public class VisionTherapyNewScenes : EditorWindow
         RectTransform globosRT = globosCont.AddComponent<RectTransform>();
         globosRT.anchorMin = Vector2.zero; globosRT.anchorMax = Vector2.one; globosRT.sizeDelta = Vector2.zero;
 
+        // 8. Crear Panel de Éxito (Persistente en Jerarquía)
+        GameObject overlay = new GameObject("FinalOverlay");
+        overlay.transform.SetParent(canvasObj.transform, false);
+        RectTransform rtOver = overlay.AddComponent<RectTransform>();
+        rtOver.anchorMin = Vector2.zero;
+        rtOver.anchorMax = Vector2.one;
+        rtOver.sizeDelta = Vector2.zero;
+        
+        Image imgOver = overlay.AddComponent<Image>();
+        imgOver.color = new Color(0, 0, 0, 0.8f); // Fondo oscuro por defecto
+        
+        GameObject txtFinalGO = new GameObject("TextoFinal");
+        txtFinalGO.transform.SetParent(overlay.transform, false);
+        TextMeshProUGUI txtFinal = txtFinalGO.AddComponent<TextMeshProUGUI>();
+        txtFinal.text = "¡MENSAJE FINAL!";
+        txtFinal.fontSize = 80;
+        txtFinal.alignment = TextAlignmentOptions.Center;
+        txtFinal.color = Color.white;
+        
+        overlay.SetActive(false); // Oculto por defecto
+
         // Manager
         GameObject managerObj = new GameObject("GameManager");
         GlobosManager manager = managerObj.AddComponent<GlobosManager>();
         manager.contenedorGlobos = globosRT;
+        manager.overlayGanaste = overlay;
 
         // Botones Comunes
         SetupCommonUI(canvasObj, manager);
@@ -49,7 +71,7 @@ public class VisionTherapyNewScenes : EditorWindow
         EditorSceneManager.SaveScene(newScene, "Assets/Scenes/ExplosionGlobos.unity");
     }
 
-    [MenuItem("Tools/Vision Therapy/Build Laberinto Scene")]
+    // [MenuItem("Tools/Vision Therapy/Build Laberinto Scene")]
     public static void BuildLaberinto()
     {
         Scene newScene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
@@ -127,10 +149,10 @@ public class VisionTherapyNewScenes : EditorWindow
         LaberintoManager manager = managerObj.AddComponent<LaberintoManager>();
         GeneradorLaberinto generator = managerObj.AddComponent<GeneradorLaberinto>();
         
-        manager.cursorVisual = cursorRT;
+        manager.playerCursor = cursorRT;
         manager.puntoInicio = startRT;
         manager.puntoMeta = goalRT;
-        manager.flashDano = flashImg;
+        manager.imageFlashDano = flashImg;
 
         // Configurar Generador
         generator.contenedor = mazeObj.GetComponent<RectTransform>();
@@ -152,9 +174,45 @@ public class VisionTherapyNewScenes : EditorWindow
         RectTransform timerRT = timerObj.GetComponent<RectTransform>();
         timerRT.anchorMin = new Vector2(0.5f, 1); timerRT.anchorMax = new Vector2(0.5f, 1);
         timerRT.anchoredPosition = new Vector2(0, -50);
-        manager.textoTimer = timerTxt;
+        manager.timerText = timerTxt;
 
         SetupCommonUI(canvasObj, manager);
+
+        // 8. Crear Panel de Éxito (Persistente en Jerarquía)
+        GameObject overlay = new GameObject("OverlayFinal");
+        overlay.transform.SetParent(canvasObj.transform, false);
+        RectTransform rtOver = overlay.AddComponent<RectTransform>();
+        rtOver.anchorMin = Vector2.zero;
+        rtOver.anchorMax = Vector2.one;
+        rtOver.sizeDelta = Vector2.zero;
+        
+        Image imgOver = overlay.AddComponent<Image>();
+        imgOver.color = new Color(0, 0, 0, 0.85f); // Un poco más oscuro para legibilidad
+        
+        // Título (¡ERES UN CRACK!)
+        GameObject resultGO = new GameObject("OverlayResult");
+        resultGO.transform.SetParent(overlay.transform, false);
+        var txtResult = resultGO.AddComponent<TextMeshProUGUI>();
+        txtResult.text = "¡ÉXITO!";
+        txtResult.fontSize = 100;
+        txtResult.alignment = TextAlignmentOptions.Center;
+        txtResult.color = Color.green;
+        RectTransform rtRes = resultGO.GetComponent<RectTransform>();
+        rtRes.anchoredPosition = new Vector2(0, 100); // Posición superior
+        
+        // Mensaje detallado (Has completado...)
+        GameObject messageGO = new GameObject("OverlayMessage");
+        messageGO.transform.SetParent(overlay.transform, false);
+        var txtMessage = messageGO.AddComponent<TextMeshProUGUI>();
+        txtMessage.text = "¡Buen trabajo!";
+        txtMessage.fontSize = 45;
+        txtMessage.alignment = TextAlignmentOptions.Center;
+        txtMessage.color = Color.white;
+        RectTransform rtMsg = messageGO.GetComponent<RectTransform>();
+        rtMsg.anchoredPosition = new Vector2(0, -50); // Debajo del título
+
+        overlay.SetActive(false); 
+        manager.overlayFinal = overlay;
         
         EditorSceneManager.SaveScene(newScene, "Assets/Scenes/LaberintoVisual.unity");
     }

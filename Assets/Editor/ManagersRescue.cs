@@ -7,7 +7,7 @@ using UnityEditor.Events;
 
 public class ManagersRescue : Editor
 {
-    [MenuItem("Tobii Pro/🚀 RESUCITAR MANAGERS")]
+    // [MenuItem("Tobii Pro/🚀 RESUCITAR MANAGERS")]
     public static void ResucitarTodo()
     {
         Debug.Log("<color=cyan>Iniciando protocolo de resurrección de Managers...</color>");
