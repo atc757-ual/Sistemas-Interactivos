@@ -21,8 +21,6 @@ public class EstrellaLinealManager : BaseActividad
     public GameObject panelDetalle; 
     
     [Header("Elementos a Ocultar en Partida")]
-    public GameObject extraTitle;
-    public GameObject barBG;
     public GameObject precBubble;
     public GameObject avanceBubble;
 
@@ -57,6 +55,8 @@ public class EstrellaLinealManager : BaseActividad
     private float _tiempoOjosCerrados = 0f;
     private bool _ojosEstablesParaIniciar = false;
     private bool _enConteo = false;
+    private float _tiempoInstruccionesMostradas = 0f;
+    private int _dirEstrella = 1; // 1 = derecha, -1 = izquierda
     private Vector2 _gazeDebugPos; 
 
     // Métricas de tiempo de actualización
@@ -99,9 +99,7 @@ public class EstrellaLinealManager : BaseActividad
         if (botonIniciar == null) botonIniciar = BuscarObjetoPotente("StartButton")?.GetComponent<Button>();
         if (botonSalir == null) botonSalir = BuscarObjetoPotente("VolverBtn")?.GetComponent<Button>();
         
-        // Bubbles y Barras que deben desaparecer
-        if (extraTitle == null) extraTitle = BuscarObjetoPotente("Title");
-        if (barBG == null) barBG = BuscarObjetoPotente("BarBG");
+        // Bubbles que deben desaparecer
         if (precBubble == null) precBubble = BuscarObjetoPotente("PrecBubble");
         if (avanceBubble == null) avanceBubble = BuscarObjetoPotente("AvanceBubble");
 
@@ -127,6 +125,18 @@ public class EstrellaLinealManager : BaseActividad
             }
             overlayResult.SetActive(false); 
         }
+        
+        // --- PERSONALIZACIÓN DE USUARIO ---
+        // Buscar el objeto "Inst" para reemplazar "Astronauta" por el nombre del usuario
+        GameObject instObj = BuscarObjetoPotente("Inst");
+        if (instObj != null) {
+            TMP_Text instText = instObj.GetComponent<TMP_Text>();
+            if (instText != null && instText.text.Contains("Astronauta")) {
+                string nombre = (GestorPaciente.Instance != null && GestorPaciente.Instance.pacienteActual != null) 
+                                ? GestorPaciente.Instance.pacienteActual.nombre : "Astronauta";
+                instText.text = instText.text.Replace("Astronauta", nombre);
+            }
+        }
     }
 
     void AutoVincularSeguimiento()
@@ -147,13 +157,18 @@ public class EstrellaLinealManager : BaseActividad
 
     void PreconfigurarPosiciones()
     {
+        // Ocultar el temporizador antes de que empiece el juego
+        if (timerContainer != null) timerContainer.SetActive(false);
+
         if (star != null) 
         {
-            // Solo una estrella, comienza desde la izquierda
-            star.anchoredPosition = new Vector2(-1100, 0);
+            // Solo vinculamos la estrella, la posición se cambiará cuando termine el contador
             _convoyEstrellas = new RectTransform[] { star };
         }
-        if (distractor != null) distractor.anchoredPosition = new Vector2(400, 100);
+        if (distractor != null) {
+            distractor.anchoredPosition = new Vector2(400, 100);
+            distractor.gameObject.SetActive(false); // Ocultar hasta que termine el contador
+        }
         
         // Duplicar el fondo si es necesario para el scroll continuo
         if (backgroundScroll != null)
@@ -185,12 +200,23 @@ public class EstrellaLinealManager : BaseActividad
     IEnumerator RutinaCountdown()
     {
         _enConteo = true;
-        if (overlayInicio != null) overlayInicio.SetActive(false);
+        
+        // Mantener OverlayInicio encendido pero APAGAR todos sus hijos excepto el Contador
+        if (overlayInicio != null) {
+            foreach (Transform child in overlayInicio.transform) {
+                // Asumimos que el contador se llama "Contador" o contiene el texto de inicio
+                if (textoMensajeInicio != null && (child == textoMensajeInicio.transform || child == textoMensajeInicio.transform.parent)) {
+                    child.gameObject.SetActive(true);
+                } else {
+                    child.gameObject.SetActive(false);
+                }
+            }
+        }
+        
         if (panelDetalle != null) panelDetalle.SetActive(false);
 
         if (textoMensajeInicio != null) {
             textoMensajeInicio.gameObject.SetActive(true);
-            textoMensajeInicio.transform.parent.gameObject.SetActive(true); 
             textoMensajeInicio.color = Color.white;
         }
 
@@ -204,12 +230,28 @@ public class EstrellaLinealManager : BaseActividad
 
         if (textoMensajeInicio != null) textoMensajeInicio.gameObject.SetActive(false); 
         
+        // Apagar el overlay completo al empezar a jugar
+        if (overlayInicio != null) overlayInicio.SetActive(false);
+        
         _tiempoTranscurrido = 0f;
         _framesTargeteados = 0;
         _framesTotales = 0;
         _segundosMirando = 0f; 
         
         ToggleUI(false); // <--- OCULTAR AL EMPEZAR
+        
+        if (distractor != null) distractor.gameObject.SetActive(true); // Mostrar distractor ahora sí
+
+        // Mover la estrella a la posición inicial (izquierda) JUSTO cuando arranca el juego
+        if (star != null) 
+        {
+            float anchoPadre = 1920f;
+            RectTransform padre = star.parent as RectTransform;
+            if (padre != null && padre.rect.width > 0) anchoPadre = padre.rect.width;
+            
+            float limiteIzquierdo = -(anchoPadre / 2f) + 100f;
+            star.anchoredPosition = new Vector2(limiteIzquierdo, 0);
+        }
 
         juegoIniciado = true;
         _enConteo = false;
@@ -217,18 +259,19 @@ public class EstrellaLinealManager : BaseActividad
 
     void ToggleUI(bool visible)
     {
-        if (extraTitle != null) extraTitle.SetActive(visible);
         if (botonSalir != null) botonSalir.gameObject.SetActive(visible);
-        if (barBG != null) barBG.SetActive(visible);
         if (precBubble != null) precBubble.SetActive(visible);
         if (avanceBubble != null) avanceBubble.SetActive(visible);
         
-        // El timer SIEMPRE visible según tu petición
-        if (timerContainer != null) timerContainer.SetActive(true);
+        // El timer SOLO visible durante el juego (!visible significa que estamos en partida)
+        if (timerContainer != null) timerContainer.SetActive(!visible);
     }
 
     protected override void Update()
     {
+        // Forzar interactividad para evitar el parpadeo causado por BaseActividad
+        if (!juegoIniciado && botonIniciar != null) botonIniciar.interactable = true;
+
         base.Update();
         if (_juegoFinalizado) return;
 
@@ -277,32 +320,41 @@ public class EstrellaLinealManager : BaseActividad
 
         ToggleUI(true); 
 
+        // Forzar los valores finales en las burbujas por si no se actualizaron en el último frame
+        if (precText != null) precText.text = precisionFinal.ToString("F0");
+        if (avanceText != null) avanceText.text = nivelAlcanzado.ToString();
+
         if (overlayResult != null)
         {
             overlayResult.SetActive(true);
             
-            if (titleRes != null) titleRes.text = "¡SESIÓN COMPLETADA!";
-            if (percentRes != null) percentRes.text = avanceFinal.ToString("F0") + "%";
+            // Mensajes super user-friendly y motivadores
+            if (titleRes != null) {
+                titleRes.text = this.puntuacion >= 70 ? "¡Misión Estelar Cumplida!" : "¡Casi lo logras!";
+            }
+            if (percentRes != null) percentRes.text = this.puntuacion.ToString();
             
             if (subRes != null) 
             {
-                subRes.text = $"<line-height=140%><size=110%>¡Excelente enfoque!</size>\n" +
-                              $"Has llegado al <color=#FFD700><b>Nivel {nivelAlcanzado}</b></color>\n" +
-                              $"<size=85%>Calidad visual: <color=#00FFFF>{precisionFinal:F0}%</color></size></line-height>";
+                if (this.puntuacion >= 70) {
+                    subRes.text = "¡Lograste acompañar a nuestra estrella durante su recorrido!\nEres un astronauta fantástico.";
+                } else {
+                    subRes.text = "La estrella se alejó un poquito esta vez.\n¡Mantén tus ojos en ella para la próxima misión!";
+                }
             }
            
             if (btnAgain != null)
             {
                 btnAgain.onClick.RemoveAllListeners();
                 btnAgain.onClick.AddListener(() => {
-                    Debug.Log("<color=orange><b>[SISTEMA]</b></color> Botón OTRA VEZ pulsado. Reiniciando juego...");
+                    Debug.Log("<color=orange><b>[SISTEMA]</b></color> Botón Jugar de nuevo pulsado. Reiniciando juego...");
                     Time.timeScale = 1.0f;
                     string nombreEscena = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
                     UnityEngine.SceneManagement.SceneManager.LoadScene(nombreEscena);
                 });
                 
                 var txtBtn = btnAgain.GetComponentInChildren<TMP_Text>();
-                if (txtBtn != null) txtBtn.text = "¡OTRA VEZ!";
+                if (txtBtn != null) txtBtn.text = "¡Jugar de nuevo!";
             }
         }
         else
@@ -315,6 +367,20 @@ public class EstrellaLinealManager : BaseActividad
 
     void ManejarPestañeoInicio()
     {
+        // 1. FALLBACK: Asegurar que el botón SIEMPRE se pueda pulsar (ratón)
+        if (botonIniciar != null) botonIniciar.interactable = true;
+
+        // 2. DELAY LECTURA: Dejar el texto original de la misión unos segundos
+        _tiempoInstruccionesMostradas += Time.deltaTime;
+        if (_tiempoInstruccionesMostradas < 5.0f) {
+            // Mantener el botón oculto mientras se leen las instrucciones
+            if (botonIniciar != null && botonIniciar.gameObject.activeSelf) botonIniciar.gameObject.SetActive(false);
+            return; // Esperar a que lean la instrucción antes de buscar ojos
+        }
+
+        // Mostrar el botón en el momento en que empezamos a buscar los ojos
+        if (botonIniciar != null && !botonIniciar.gameObject.activeSelf) botonIniciar.gameObject.SetActive(true);
+
         var gaze = EyeTracker.Instance.LatestGazeData;
         // Usamos GazePointValid que es lo que usa la calibración oficial
         bool detectado = gaze != null && (gaze.Left.GazePointValid || gaze.Right.GazePointValid);
@@ -354,9 +420,8 @@ public class EstrellaLinealManager : BaseActividad
     void ActualizarUI()
     {
         if (textoTimer != null) {
-            int minutos = Mathf.FloorToInt(_tiempoTranscurrido / 60f);
-            int segundos = Mathf.FloorToInt(_tiempoTranscurrido % 60f);
-            textoTimer.text = string.Format("{0:00}:{1:00}", minutos, segundos);
+            float tiempoRestante = Mathf.Max(0, duracionSesion - _tiempoTranscurrido);
+            textoTimer.text = tiempoRestante.ToString("F0") + "s";
         }
 
         if (precText != null) 
@@ -376,21 +441,36 @@ public class EstrellaLinealManager : BaseActividad
         int nivelActual = Mathf.FloorToInt(_segundosMirando / 10f) + 1;
         
         if (avanceText != null) 
-            avanceText.text = (nivelActual > 1) ? "Lvl " + nivelActual : progresoNivel.ToString("F0") + "%";
+            avanceText.text = (nivelActual > 1) ? nivelActual.ToString() : progresoNivel.ToString("F0");
             
         if (barFill != null) barFill.fillAmount = (_segundosMirando % 10f) / 10f;
     }
 
     void MoverObjetosAdicionales()
     {
-        // 2. MOVIMIENTO DE ÚNICA ESTRELLA
+        // 2. MOVIMIENTO DE ÚNICA ESTRELLA (Rebote Izquierda-Derecha)
         if (_convoyEstrellas != null)
         {
-            float limiteBorde = (Screen.width / 2f); 
+            float anchoPadre = 1920f;
+            if (_convoyEstrellas.Length > 0 && _convoyEstrellas[0] != null) {
+                RectTransform padre = _convoyEstrellas[0].parent as RectTransform;
+                if (padre != null && padre.rect.width > 0) anchoPadre = padre.rect.width;
+            }
+
+            float limiteBorde = (anchoPadre / 2f) - 100f; // Margen de 100px para que no desaparezca
+
             foreach (var s in _convoyEstrellas)
             {
-                s.anchoredPosition += Vector2.right * velocidadStar * Time.deltaTime;
-                if (s.anchoredPosition.x > limiteBorde) s.anchoredPosition = new Vector2(-limiteBorde, s.anchoredPosition.y);
+                s.anchoredPosition += Vector2.right * (velocidadStar * _dirEstrella * Time.deltaTime);
+                
+                if (s.anchoredPosition.x > limiteBorde) {
+                    s.anchoredPosition = new Vector2(limiteBorde, s.anchoredPosition.y);
+                    _dirEstrella = -1; // Rebotar hacia la izquierda
+                }
+                else if (s.anchoredPosition.x < -limiteBorde) {
+                    s.anchoredPosition = new Vector2(-limiteBorde, s.anchoredPosition.y);
+                    _dirEstrella = 1; // Rebotar hacia la derecha
+                }
             }
         }
 
@@ -443,10 +523,9 @@ public class EstrellaLinealManager : BaseActividad
     void ProcesarSeguimientoOcular()
     {
         _framesTotales++;
-        var gaze = EyeTracker.Instance.LatestGazeData;
-        if (gaze == null) return;
+        var gaze = EyeTracker.Instance != null ? EyeTracker.Instance.LatestGazeData : null;
 
-        if (gaze.Left.GazePointValid || gaze.Right.GazePointValid)
+        if (gaze != null && (gaze.Left.GazePointValid || gaze.Right.GazePointValid))
         {
             // Promedio directo del SDK
             Vector2 viewPos = new Vector2(
@@ -456,22 +535,27 @@ public class EstrellaLinealManager : BaseActividad
             
             // Mapeo crudo a píxeles de ventana
             _gazeDebugPos = new Vector2(viewPos.x * Screen.width, (1f - viewPos.y) * Screen.height);
+        }
+        else
+        {
+            // Fallback al ratón si Tobii no está conectado o no detecta ojos
+            _gazeDebugPos = Input.mousePosition;
+        }
             
-            if (_convoyEstrellas != null)
+        if (_convoyEstrellas != null)
+        {
+            foreach (var s in _convoyEstrellas)
             {
-                foreach (var s in _convoyEstrellas)
-                {
-                    // Detectamos la cámara del canvas de forma dinámica para el Raycast
-                    Canvas rootCanvas = s.GetComponentInParent<Canvas>();
-                    Camera uiCam = (rootCanvas != null && rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay) ? rootCanvas.worldCamera : null;
+                // Detectamos la cámara del canvas de forma dinámica para el Raycast
+                Canvas rootCanvas = s.GetComponentInParent<Canvas>();
+                Camera uiCam = (rootCanvas != null && rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay) ? rootCanvas.worldCamera : null;
 
-                    // Esta función oficial de Unity maneja el escalado del Canvas automaticamente
-                    if (RectTransformUtility.RectangleContainsScreenPoint(s, _gazeDebugPos, uiCam))
-                    {
-                        _framesTargeteados++;
-                        _segundosMirando += Time.deltaTime;
-                        break;
-                    }
+                // Esta función oficial de Unity maneja el escalado del Canvas automaticamente
+                if (RectTransformUtility.RectangleContainsScreenPoint(s, _gazeDebugPos, uiCam))
+                {
+                    _framesTargeteados++;
+                    _segundosMirando += Time.deltaTime;
+                    break;
                 }
             }
         }

@@ -11,7 +11,7 @@ public class ActivitiesManager : MonoBehaviour
     public Button btnMeteoro;
     public Button btnCometa;
     public Button btnEstrella;
-    public Button btnSatelite;
+    public Button btnLaberinto;
     public Button btnVolver;
 
     void Awake()
@@ -31,7 +31,7 @@ public class ActivitiesManager : MonoBehaviour
         ConfigurarBoton(btnMeteoro, () => SceneManager.LoadScene("MeteoroZigzag"));
         ConfigurarBoton(btnCometa, () => SceneManager.LoadScene("CometaCuadrado"));
         ConfigurarBoton(btnEstrella, () => SceneManager.LoadScene("EstrellaLineal"));
-        ConfigurarBoton(btnSatelite, () => SceneManager.LoadScene("SateliteOrbita"));
+        ConfigurarBoton(btnLaberinto, () => SceneManager.LoadScene("LaberintoVisual"));
         ConfigurarBoton(btnVolver, () => SceneManager.LoadScene("Home"));
 
         Debug.Log("<color=cyan><b>[Activities]</b> Navegación lista.</color>");
@@ -51,7 +51,7 @@ public class ActivitiesManager : MonoBehaviour
         if (btnMeteoro == null) btnMeteoro = BuscarBoton("BtnMeteoroZigZag") ?? BuscarPorContenido("meteoro");
         if (btnCometa == null) btnCometa = BuscarBoton("BtnCometaCuadrado") ?? BuscarPorContenido("cometa");
         if (btnEstrella == null) btnEstrella = BuscarBoton("BtnEstrellaLineal") ?? BuscarPorContenido("estrella") ?? BuscarPorContenido("lineal");
-        if (btnSatelite == null) btnSatelite = BuscarBoton("BtnSateliteOrbita") ?? BuscarPorContenido("satelite") ?? BuscarPorContenido("orbita");
+        if (btnLaberinto == null) btnLaberinto = BuscarBoton("BtnLaberintoEstelar") ?? BuscarPorContenido("laberinto") ?? BuscarPorContenido("estelar");
         if (btnVolver == null) btnVolver = BuscarBoton("VolverBtn") ?? BuscarPorContenido("volver");
     }
 

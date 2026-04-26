@@ -718,14 +718,6 @@ public class LaberintoManager : BaseActividad
             botonReload.SetActive(true);
             // Solo mostrar mensaje de pestañeo si estamos usando Tobii activamente
             if (overlayRetry != null) overlayRetry.SetActive(usarValidacionOjos);
-            
-            Image btnImg = botonReload.GetComponent<Image>();
-            if (btnImg != null) btnImg.color = new Color(0, 0.8f, 0); // Verde vibrante
-            
-            TMP_Text btnTxt = botonReload.GetComponentInChildren<TMP_Text>();
-            if (btnTxt != null) {
-                btnTxt.text = (finalScore >= 100) ? "Volver a jugar" : "Mejorar puntuación";
-            }
         }
     }
 

@@ -16,13 +16,22 @@ public class CarreraOcularManager : BaseActividad
     public RectTransform jugador;
     public RectTransform contenedorObstaculos;
     public RectTransform backgroundScroll;
+    public GameObject luna;
     
     [Header("UI y Feedback")]
     public TMP_Text textoTimer;
     public List<Image> iconosVidas;
     public TMP_Text textoVidas; // Soporte para el texto "VIDAS: X"
     public TMP_Text textoNivel;
+    public TMP_Text textoContador; // Para el 3-2-1 3, 2, 1... ¡YA!
+    
+    [Header("Resultados UI")]
     public GameObject overlayResult;
+    public TMP_Text titleRes;
+    public TMP_Text subRes;
+    public TMP_Text puntajeText;
+    public TMP_Text colisionesText;
+    public TMP_Text vidasRestantesText;
     
     [Header("Ajustes de Movimiento")]
     public float velocidadJugador = 10f;
@@ -35,7 +44,7 @@ public class CarreraOcularManager : BaseActividad
     
     [Header("Ajustes de Spawn")]
     public GameObject prefabObstaculo;
-    public float tiempoEntreObstaculos = 2f;
+    public float tiempoEntreObstaculos = 0.8f;
     
     [Header("Configuración")]
     public float duracionSesion = 60f;
@@ -49,36 +58,130 @@ public class CarreraOcularManager : BaseActividad
     private List<RectTransform> _bgSegments = new List<RectTransform>();
     private float _spawnTimer = 0f;
     private bool _juegoFinalizado = false;
+    private bool _enConteo = false;
+    private int _colisiones = 0;
+    private bool _timerIniciado = false;
     private float _lastClickTime = 0f;
     private const float DOUBLE_CLICK_TIME = 0.3f;
 
     protected override void Start()
     {
         usarValidacionOjos = false; // Desactivar bloqueo por Tobii para pruebas
-        base.Start();
+        
+        // Ejecutamos NUESTRA vinculación robusta PRIMERO
         VincularUI();
+        
+        // LUEGO llamamos a la base para que asigne los OnClick a los botones ya encontrados
+        base.Start();
+
+        // GARANTÍA ABSOLUTA: Forzamos nosotros mismos la conexión del evento de clic
+        if (botonIniciar != null) {
+            botonIniciar.onClick.RemoveAllListeners();
+            botonIniciar.onClick.AddListener(IniciarJuego);
+        }
+        
+        // Garantizar estados iniciales de la UI por si se guardó la escena apagada
+        if (overlayInicio != null) overlayInicio.SetActive(true);
+        if (overlayResult != null) overlayResult.SetActive(false);
+        
+        // ¡Ocultar el contador al inicio para que no se vea el "3"!
+        if (textoContador != null) textoContador.gameObject.SetActive(false);
+        if (textoMensajeInicio != null) textoMensajeInicio.gameObject.SetActive(false);
+        if (luna != null) luna.SetActive(false);
+        
         _vidasActuales = vidasMaximas;
         _targetY = 0;
         PreconfigurarEscena();
 
         // Bypass de validación de ojos para modo ratón
-        if (botonIniciar != null) botonIniciar.interactable = true;
+        if (botonIniciar != null) {
+            botonIniciar.interactable = true;
+        }
     }
 
     void VincularUI()
     {
+        // --- AUTO VINCULAR ELEMENTOS BASE ---
+        if (overlayInicio == null) overlayInicio = BuscarObjetoInactivo("OverlayInicio");
+        
+        // ¡SOBRESCRIBIR botón iniciar por si en el Inspector está puesto uno viejo invisible!
+        var btnStart = BuscarObjetoInactivo("StartButton");
+        if (btnStart != null) botonIniciar = btnStart.GetComponent<Button>();
+        
+        if (botonSalir == null) {
+            var btnBack = BuscarObjetoInactivo("BackBtn");
+            if (btnBack != null) botonSalir = btnBack.GetComponent<Button>();
+        }
+
         // Si no están asignados, los buscamos por nombre
         if (jugador == null) jugador = GameObject.Find("Player")?.GetComponent<RectTransform>();
         if (backgroundScroll == null) backgroundScroll = GameObject.Find("BG")?.GetComponent<RectTransform>();
         if (contenedorObstaculos == null) contenedorObstaculos = GameObject.Find("Obstacles")?.GetComponent<RectTransform>();
         if (textoVidas == null) textoVidas = GameObject.Find("Lives")?.GetComponent<TMP_Text>();
-        
-        // El botón de reintentar suele estar oculto al inicio, lo buscamos en el panel de resultados
-        if (botonReiniciar == null && overlayResult != null)
-        {
-            botonReiniciar = overlayResult.GetComponentInChildren<Button>(true);
-            if (botonReiniciar != null) botonReiniciar.onClick.AddListener(ReiniciarJuego);
+        if (textoTimer == null) {
+            var t = BuscarObjetoInactivo("Timer");
+            if (t != null) textoTimer = t.GetComponent<TMP_Text>();
         }
+        
+        // --- AUTO VINCULAR RESULTADOS (INCLUSO INACTIVOS) ---
+        if (overlayResult == null) overlayResult = BuscarObjetoInactivo("OverlayResultado");
+        
+        if (overlayResult != null)
+        {
+            if (titleRes == null) {
+                var t = BuscarObjetoInactivo("ResultText");
+                if (t != null) titleRes = t.GetComponent<TMP_Text>();
+            }
+            if (subRes == null) {
+                var t = BuscarObjetoInactivo("SubRes");
+                if (t != null) subRes = t.GetComponent<TMP_Text>();
+            }
+            if (colisionesText == null) {
+                var t = BuscarObjetoInactivo("Colisiones");
+                if (t != null) colisionesText = t.GetComponentInChildren<TMP_Text>();
+            }
+            if (vidasRestantesText == null) {
+                var t = BuscarObjetoInactivo("VidasRestantes");
+                if (t != null) vidasRestantesText = t.GetComponentInChildren<TMP_Text>();
+            }
+            if (puntajeText == null) {
+                var t = BuscarObjetoInactivo("Puntaje");
+                if (t != null) puntajeText = t.GetComponentInChildren<TMP_Text>();
+            }
+
+            // El botón de reintentar suele estar oculto al inicio
+            if (botonReiniciar == null)
+            {
+                var btnRetry = BuscarObjetoInactivo("RetryButton");
+                if (btnRetry != null) botonReiniciar = btnRetry.GetComponent<Button>();
+            }
+        }
+
+        if (textoContador == null) {
+            var contObj = BuscarObjetoInactivo("Counter");
+            if (contObj == null) contObj = BuscarObjetoInactivo("CounterResult");
+            if (contObj != null) textoContador = contObj.GetComponent<TMP_Text>();
+        }
+
+        if (textoMensajeInicio == null) {
+            var mObj = BuscarObjetoInactivo("StartMessage");
+            if (mObj != null) textoMensajeInicio = mObj.GetComponent<TMP_Text>();
+        }
+
+        if (luna == null) {
+            luna = BuscarObjetoInactivo("Luna");
+            if (luna == null) luna = BuscarObjetoInactivo("Moon");
+            if (luna == null) luna = BuscarObjetoInactivo("MediaLuna");
+        }
+    }
+
+    GameObject BuscarObjetoInactivo(string nombre)
+    {
+        string busqueda = nombre.ToLower();
+        foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None)) {
+            if (t.name.Trim().ToLower() == busqueda && !string.IsNullOrEmpty(t.gameObject.scene.name)) return t.gameObject;
+        }
+        return null;
     }
 
     void PreconfigurarEscena()
@@ -105,33 +208,120 @@ public class CarreraOcularManager : BaseActividad
 
     public override void IniciarJuego()
     {
-        if (juegoIniciado) return;
-        base.IniciarJuego();
+        if (_enConteo || juegoIniciado) return;
         
-        // Refuerzo para ocultar UI
+        // Ocultar botón volver durante la partida
+        if (botonSalir != null) botonSalir.gameObject.SetActive(false);
+        
+        // Mostrar la luna solo al empezar
+        if (luna != null) luna.SetActive(true);
+        
+        StartCoroutine(RutinaCountdown());
+    }
+
+    IEnumerator RutinaCountdown()
+    {
+        _enConteo = true;
+        
+        // Mantener OverlayInicio encendido pero APAGAR todos sus hijos excepto el Contador
+        if (overlayInicio != null) {
+            foreach (Transform child in overlayInicio.transform) {
+                if (textoContador != null && child == textoContador.transform) {
+                    // Si el contador es hijo directo del Overlay
+                    child.gameObject.SetActive(true);
+                } else if (textoContador != null && child == textoContador.transform.parent) {
+                    // Si el contador está DENTRO del Botón (StartButton)
+                    child.gameObject.SetActive(true); // Mantenemos el botón encendido para que el contador exista
+                    
+                    // Pero apagamos el fondo del botón
+                    var img = child.GetComponent<Image>();
+                    if (img != null) img.enabled = false;
+                    
+                    // Y apagamos el icono y el texto "Comenzar", dejando SOLO el contador
+                    foreach (Transform subChild in child) {
+                        if (subChild != textoContador.transform) {
+                            subChild.gameObject.SetActive(false);
+                        }
+                    }
+                } else {
+                    // Cualquier otro elemento (OverlayTitle, Description, etc) se apaga completamente
+                    child.gameObject.SetActive(false);
+                }
+            }
+        }
+
+        if (textoContador != null) {
+            textoContador.gameObject.SetActive(true);
+            textoContador.color = Color.white;
+        }
+
+        for (int i = 3; i > 0; i--)
+        {
+            if (textoContador != null) textoContador.text = i.ToString();
+            yield return new WaitForSecondsRealtime(1f);
+        }
+
+        if (textoContador != null) { textoContador.text = "¡Empezar!"; yield return new WaitForSecondsRealtime(0.7f); }
+        if (textoContador != null) textoContador.gameObject.SetActive(false); 
+        
         if (overlayInicio != null) overlayInicio.SetActive(false);
-        if (botonIniciar != null) botonIniciar.gameObject.SetActive(false);
-        
+
         _tiempoTranscurrido = 0f;
-        Debug.Log("Carrera Ocular: Iniciando y ocultando UI");
+        _colisiones = 0;
+        
+        base.IniciarJuego();
+        _enConteo = false;
+        _timerIniciado = false; // El tiempo real solo empezará con el primer obstáculo
     }
 
     protected override void Update()
     {
+        // Forzar interactividad del botón y Ocultar estrictamente el contador hasta que empiece el conteo
+        if (!juegoIniciado)
+        {
+            if (botonIniciar != null) botonIniciar.interactable = true;
+            
+            if (!_enConteo && textoContador != null && textoContador.gameObject.activeSelf) 
+            {
+                textoContador.gameObject.SetActive(false);
+            }
+
+            // --- LÓGICA DE DETECCIÓN DE OJOS ---
+            if (!juegoIniciado && !_enConteo && textoMensajeInicio != null)
+            {
+                // Si Tobii está conectado y detecta ojos, mostramos el mensaje. Si no, oculto.
+                var gaze = (EyeTracker.Instance != null) ? EyeTracker.Instance.LatestGazeData : null;
+                bool detectado = (gaze != null && (gaze.Left.GazePointValid || gaze.Right.GazePointValid));
+                textoMensajeInicio.gameObject.SetActive(detectado);
+            }
+
+            // FALLBACK A PRUEBA DE BALAS: Si el botón UI está bloqueado por algún panel invisible,
+            // cualquier clic de ratón en la pantalla forzará el inicio de la partida.
+            if (!_enConteo && UnityEngine.Input.GetMouseButtonDown(0))
+            {
+                IniciarJuego();
+            }
+        }
+
         base.Update();
         if (_juegoFinalizado) return;
 
         MoverFondo();
 
-        if (!juegoIniciado || juegoPausado) return;
+        if (!juegoIniciado || juegoPausado || _enConteo) return;
 
-        _tiempoTranscurrido += Time.deltaTime;
+        // Actualizar reloj siempre para que se vea el "60s" inicial
         ActualizarReloj();
 
-        if (_tiempoTranscurrido >= duracionSesion)
+        if (_timerIniciado)
         {
-            FinalizarActividadLocal();
-            return;
+            _tiempoTranscurrido += Time.deltaTime;
+
+            if (_tiempoTranscurrido >= duracionSesion)
+            {
+                FinalizarActividadLocal();
+                return;
+            }
         }
 
         // ProcesarEntradaTobii(); // Comentado por ahora
@@ -202,17 +392,22 @@ public class CarreraOcularManager : BaseActividad
 
     void MoverJugador()
     {
-        if (jugador == null || !juegoIniciado) return;
+        if (jugador == null) return;
         
-        Vector2 pos = jugador.anchoredPosition;
+        // --- Movimiento Vertical (Controlado por Gaze o Mouse) ---
+        float currentY = jugador.anchoredPosition.y;
+        float newY = Mathf.Lerp(currentY, _targetY, Time.deltaTime * velocidadJugador);
         
-        // Movimiento Vertical (Carriles)
-        pos.y = Mathf.Lerp(pos.y, _targetY, Time.deltaTime * velocidadJugador);
+        // --- Movimiento Horizontal (Oscilación MUY sutil) ---
+        // Ahora solo oscila un poquito (5% del ancho) desde su posición base (-35%) hacia adelante
+        float xBase = -Screen.width * 0.35f;
+        float xAvance = -Screen.width * 0.30f; 
         
-        // Avance Horizontal: Desactivado por petición (se queda donde esté)
-        // if (pos.x < 0) ...
+        // Oscilación más lenta y cortita
+        float oscilacion = (Mathf.Sin(Time.time * 0.6f) + 1f) / 2f; 
+        float newX = Mathf.Lerp(xBase, xAvance, oscilacion);
 
-        jugador.anchoredPosition = pos;
+        jugador.anchoredPosition = new Vector2(newX, newY);
     }
 
     void GestionarObstaculos()
@@ -250,6 +445,7 @@ public class CarreraOcularManager : BaseActividad
     void CrearObstaculo()
     {
         if (contenedorObstaculos == null) return;
+        _timerIniciado = true; // Empezamos a contar tiempo en el primer spawn
 
         GameObject nuevo = null;
         if (prefabObstaculo != null)
@@ -295,13 +491,18 @@ public class CarreraOcularManager : BaseActividad
 
         RectTransform rt = nuevo.GetComponent<RectTransform>();
         
-        // Aleatorio entre arriba, centro o abajo
-        float rnd = Random.value;
-        float y = alturaCentro;
-        if (rnd < 0.33f) y = alturaArriba;
-        else if (rnd > 0.66f) y = alturaAbajo;
+        // --- MAYOR DIVERSIFICACIÓN (Dispersión) ---
+        // En lugar de 3 carriles fijos, usamos todo el rango con un poco de margen extra
+        float yAleatorio = Random.Range(alturaAbajo - 60f, alturaArriba + 60f);
+        
+        // Añadimos variación en X para que no aparezcan todos en una línea recta perfecta
+        float xJitter = Random.Range(0f, 200f);
+        
+        // Variación de tamaño aleatoria para que unos meteoritos sean más grandes que otros (0.8x a 1.4x)
+        float escalaAleatoria = Random.Range(0.8f, 1.4f);
+        rt.localScale = Vector3.one * escalaAleatoria;
 
-        rt.anchoredPosition = new Vector2(Screen.width, y);
+        rt.anchoredPosition = new Vector2(Screen.width + xJitter, yAleatorio);
         _obstaculosActivos.Add(rt);
     }
 
@@ -310,6 +511,8 @@ public class CarreraOcularManager : BaseActividad
         if (_juegoFinalizado) return;
         
         _vidasActuales--;
+        _colisiones++;
+        
         if (textoVidas != null) textoVidas.text = "VIDAS: " + Mathf.Max(0, _vidasActuales);
         
         // Efecto visual en el jugador
@@ -367,27 +570,80 @@ public class CarreraOcularManager : BaseActividad
     void ActualizarReloj()
     {
         if (textoTimer == null) return;
-        int min = Mathf.FloorToInt(_tiempoTranscurrido / 60);
-        int seg = Mathf.FloorToInt(_tiempoTranscurrido % 60);
-        textoTimer.text = string.Format("{0:00}:{1:00}", min, seg);
+        float tiempoRestante = Mathf.Max(0, duracionSesion - _tiempoTranscurrido);
+        textoTimer.text = tiempoRestante.ToString("F0") + "s";
     }
 
     void FinalizarActividadLocal()
     {
         _juegoFinalizado = true;
         juegoIniciado = false;
+        
+        // Mostrar de nuevo el botón Volver
+        if (botonSalir != null) botonSalir.gameObject.SetActive(true);
+        
+        // --- CALCULAR PUNTUACIÓN (Versión más generosa) ---
+        // Tiempo suma puntos (hasta 100), colisiones restan, si mueres se resta penalización
+        float puntosTiempo = Mathf.Clamp01(_tiempoTranscurrido / duracionSesion) * 100f;
+        
+        // Penalizaciones más suaves: 8 por colisión y 15 por derrota total
+        int penalizacion = (_colisiones * 8) + (_vidasActuales <= 0 ? 15 : 0);
+        int finalScore = Mathf.Clamp(Mathf.FloorToInt(puntosTiempo) - penalizacion, 0, 100);
+
+        // Si sobrevivió bastante tiempo (más de 15s), garantizamos al menos 1 punto para que no sea 0
+        if (finalScore == 0 && _tiempoTranscurrido > 15f) finalScore = 5;
+
+        // Actualizar UI de Resultados
+        if (colisionesText != null) colisionesText.text = _colisiones.ToString();
+        if (vidasRestantesText != null) vidasRestantesText.text = Mathf.Max(0, _vidasActuales).ToString();
+        if (puntajeText != null) puntajeText.text = finalScore.ToString();
+
+        if (titleRes != null) {
+            titleRes.text = finalScore >= 50 ? "¡Carrera Completada!" : "¡Casi lo logras!";
+        }
+        
+        if (subRes != null) {
+            if (finalScore >= 50) {
+                subRes.text = "¡Esquivaste los obstáculos como un profesional!\n¡Eres un gran piloto estelar!";
+            } else {
+                subRes.text = "Los obstáculos te han golpeado varias veces.\n¡Concéntrate para la próxima misión!";
+            }
+        }
+
         if (overlayResult != null) overlayResult.SetActive(true);
         
-        // Guardar métricas (ejemplo)
+        // Ocultar la luna al terminar
+        if (luna != null) luna.SetActive(false);
+        
+        // Guardar métricas
         if (GestorPaciente.Instance != null)
         {
-            GestorPaciente.Instance.GuardarPartida("Carrera Ocular", (_vidasActuales * 100), 1, 100, true, _tiempoTranscurrido);
+            GestorPaciente.Instance.GuardarPartida("Carrera Ocular", finalScore, 1, 100, true, _tiempoTranscurrido);
         }
     }
 
     public override void ReiniciarJuego()
     {
-        Time.timeScale = 1;
-        UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+        // Reset de estado interno
+        _juegoFinalizado = false;
+        juegoIniciado = false;
+        _enConteo = false;
+        _timerIniciado = false;
+        _tiempoTranscurrido = 0f;
+        _colisiones = 0;
+        _vidasActuales = vidasMaximas;
+        _spawnTimer = 0f;
+
+        // Limpiar obstáculos existentes
+        foreach (var obs in _obstaculosActivos) if (obs != null) Destroy(obs.gameObject);
+        _obstaculosActivos.Clear();
+
+        // UI Reset
+        if (overlayResult != null) overlayResult.SetActive(false);
+        if (textoVidas != null) textoVidas.text = "VIDAS: " + _vidasActuales;
+        ActualizarReloj();
+
+        // Lanzar el inicio con su contador
+        IniciarJuego();
     }
 }
