@@ -23,7 +23,7 @@ public abstract class BaseActividad : MonoBehaviour
     public Sprite iconPlay;
     public Sprite iconPause;
 
-    protected bool usarValidacionOjos = true; // Permite desactivar el bloqueo por ojos
+    public bool usarValidacionOjos = true; // Permite desactivar el bloqueo por ojos
     protected int puntuacion = 0;
     protected bool juegoIniciado = false;
     protected bool juegoPausado = false;
@@ -64,7 +64,11 @@ public abstract class BaseActividad : MonoBehaviour
         while (!juegoIniciado)
         {
             bool ojosDetectados = false;
-            if (EyeTracker.Instance != null)
+            if (TobiiGazeProvider.Instance != null)
+            {
+                ojosDetectados = TobiiGazeProvider.Instance.HasGaze;
+            }
+            else if (EyeTracker.Instance != null)
             {
                 var gaze = EyeTracker.Instance.LatestGazeData;
                 ojosDetectados = gaze != null && (gaze.Left.GazeOriginValid || gaze.Right.GazeOriginValid);
@@ -72,8 +76,19 @@ public abstract class BaseActividad : MonoBehaviour
 
             if (botonIniciar != null) 
             {
-                if (usarValidacionOjos) botonIniciar.interactable = ojosDetectados;
-                else botonIniciar.interactable = true;
+                if (usarValidacionOjos) 
+                {
+                    // Solo bloqueamos si el proveedor existe y dice que no hay ojos
+                    // Si el proveedor no existe, permitimos el click (fallback)
+                    if (TobiiGazeProvider.Instance != null)
+                        botonIniciar.interactable = TobiiGazeProvider.Instance.HasGaze;
+                    else
+                        botonIniciar.interactable = true;
+                }
+                else 
+                {
+                    botonIniciar.interactable = true;
+                }
             }
 
             // Dejamos que el hijo maneje el texto si quiere, 
