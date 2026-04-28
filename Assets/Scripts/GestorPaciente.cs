@@ -11,7 +11,6 @@ public class DatosPaciente
     public string fechaSesion;  // Actualizarda: fecha del último login
     public int puntuacionTotal;
     public List<Partida> historialPartidas = new List<Partida>();
-    public List<SesionExplosionGlobos> historialExplosionGlobos = new List<SesionExplosionGlobos>();
 }
 
 [System.Serializable]
@@ -144,13 +143,6 @@ public class GestorPaciente : MonoBehaviour
         pacienteActual.historialPartidas.Add(nuevaPartida);
         pacienteActual.puntuacionTotal += puntuacion;
 
-        GuardarTodosLosDatos();
-    }
-
-    public void GuardarSesionExplosionGlobos(SesionExplosionGlobos sesion)
-    {
-        if (pacienteActual == null) return;
-        pacienteActual.historialExplosionGlobos.Add(sesion);
         GuardarTodosLosDatos();
     }
 
