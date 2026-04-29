@@ -107,11 +107,20 @@ public class LaberintoManager : BaseActividad
     void MapearJerarquia()
     {
         // Contenedores principales
-        if (mazeContainer == null) mazeContainer = GameObject.Find("MazeContainer");
-        if (playerCursor == null) playerCursor = GameObject.Find("PlayerCursor")?.GetComponent<RectTransform>();
-        if (imageFlashDano == null) imageFlashDano = GameObject.Find("FlashDano")?.GetComponent<Image>();
-        if (timerText == null) timerText = GameObject.Find("TimerText")?.GetComponent<TMP_Text>();
-        if (botonVolver == null) botonVolver = GameObject.Find("VolverBtn");
+        if (mazeContainer == null) mazeContainer = BuscarObjetoInactivo("MazeContainer");
+        if (playerCursor == null) {
+            var go = BuscarObjetoInactivo("PlayerCursor");
+            if (go == null) go = BuscarObjetoInactivo("Astronauta");
+            if (go != null) playerCursor = go.GetComponent<RectTransform>();
+        }
+        if (imageFlashDano == null) {
+            var go = BuscarObjetoInactivo("FlashDano");
+            if (go != null) imageFlashDano = go.GetComponent<Image>();
+        }
+        if (timerText == null) {
+            var go = BuscarObjetoInactivo("TimerText");
+            if (go != null) timerText = go.GetComponent<TMP_Text>();
+        }
         
         // Overlays (Búsqueda más agresiva por si están desactivados)
         Canvas mainCanvas = GetComponentInParent<Canvas>();
@@ -121,6 +130,22 @@ public class LaberintoManager : BaseActividad
             if (overlayInicio == null) overlayInicio = mainCanvas.transform.Find("OverlayInicio")?.gameObject;
             if (overlayFinal == null) overlayFinal = mainCanvas.transform.Find("OverlayFinal")?.gameObject;
             if (overlayRetry == null) overlayRetry = mainCanvas.transform.Find("OverlayRetry")?.gameObject;
+
+            // Botón Volver — siempre en la raíz del Canvas
+            if (botonVolver == null) {
+                Transform vt = mainCanvas.transform.Find("VolverBtn")
+                             ?? mainCanvas.transform.Find("BotonVolver")
+                             ?? mainCanvas.transform.Find("BackBtn");
+                if (vt != null) {
+                    botonVolver = vt.gameObject;
+                    Button btnVolver = vt.GetComponent<Button>();
+                    if (btnVolver != null) {
+                        btnVolver.onClick.RemoveAllListeners();
+                        btnVolver.onClick.AddListener(() =>
+                            UnityEngine.SceneManagement.SceneManager.LoadScene("Activities"));
+                    }
+                }
+            }
         }
 
         // Búsqueda del botón y mensaje (OverlayInstructions) de forma robusta
@@ -206,9 +231,13 @@ public class LaberintoManager : BaseActividad
                     }
 
                     Debug.Log("<color=green>LABERINTO: ¡Confeti Estelar forzado al frente!</color>");
-                } else {
-                    Debug.LogWarning("<color=orange>LABERINTO: No se encontró el objeto 'ConfetiEstelar' en la escena.</color>");
                 }
+            }
+
+            // --- ASEGURAR ASTRONAUTA DELANTE ---
+            if (playerCursor != null) {
+                playerCursor.transform.SetAsLastSibling();
+                Debug.Log("<color=cyan>LABERINTO: Astronauta forzado al frente.</color>");
             }
 
             if (counterFinal == null) {
@@ -229,8 +258,14 @@ public class LaberintoManager : BaseActividad
         }
 
         // Puntos de control (Nombres exactos de tu foto)
-        if (puntoInicio == null) puntoInicio = GameObject.Find("StartPoint")?.GetComponent<RectTransform>();
-        if (puntoMeta == null) puntoMeta = GameObject.Find("Goal_Point")?.GetComponent<RectTransform>();
+        if (puntoInicio == null) {
+            var go = BuscarObjetoInactivo("StartPoint");
+            if (go != null) puntoInicio = go.GetComponent<RectTransform>();
+        }
+        if (puntoMeta == null) {
+            var go = BuscarObjetoInactivo("Goal_Point");
+            if (go != null) puntoMeta = go.GetComponent<RectTransform>();
+        }
     }
 
     /// <summary>
@@ -433,44 +468,32 @@ public class LaberintoManager : BaseActividad
 
     protected virtual void ProcesarSeguimientoOcular()
     {
-        if (EyeTracker.Instance == null) return;
+        if (TobiiGazeProvider.Instance == null || !TobiiGazeProvider.Instance.HasGaze) return;
 
-        var gaze = EyeTracker.Instance.LatestGazeData;
-        if (gaze != null && (gaze.Left.GazePointValid || gaze.Right.GazePointValid))
-        {
-            // Promedio de ambos ojos (0.0 a 1.0)
-            Vector2 viewPos = new Vector2(
-                (gaze.Left.GazePointOnDisplayArea.x + gaze.Right.GazePointOnDisplayArea.x) / 2f,
-                (gaze.Left.GazePointOnDisplayArea.y + gaze.Right.GazePointOnDisplayArea.y) / 2f
-            );
+        Vector2 screenPoint = TobiiGazeProvider.Instance.GazePositionScreen;
 
-            // Convertir de ratio (0-1) a píxeles de pantalla
-            Vector2 screenPoint = new Vector2(viewPos.x * Screen.width, (1f - viewPos.y) * Screen.height);
+        Vector2 localPoint;
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            mazeContainer.GetComponent<RectTransform>(), 
+            screenPoint, 
+            null, 
+            out localPoint
+        );
 
-            Vector2 localPoint;
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                mazeContainer.GetComponent<RectTransform>(), 
-                screenPoint, 
-                null, 
-                out localPoint
-            );
-
-            // Suavizado
-            _posicionActual = Vector2.Lerp(_posicionActual, localPoint, 0.15f);
-            
-            if (playerCursor != null) {
-                playerCursor.anchoredPosition = _posicionActual;
-            }
+        // Suavizado
+        _posicionActual = Vector2.Lerp(_posicionActual, localPoint, 0.15f);
+        
+        if (playerCursor != null) {
+            playerCursor.anchoredPosition = _posicionActual;
         }
     }
 
     void ManejarInstrucciones()
     {
-        bool tobiiDisponible = (EyeTracker.Instance != null);
+        bool tobiiDisponible = (TobiiGazeProvider.Instance != null);
 
         if (usarValidacionOjos && tobiiDisponible) {
-            var gaze = EyeTracker.Instance.LatestGazeData;
-            bool ojosDetectados = gaze != null && (gaze.Left.GazePointValid || gaze.Right.GazePointValid);
+            bool ojosDetectados = TobiiGazeProvider.Instance.HasGaze;
 
             // 1. El mensaje (OverlayInstructions) SOLO aparece si se detectan los ojos
             if (overlayInstructions != null) {
@@ -479,18 +502,20 @@ public class LaberintoManager : BaseActividad
                 }
             }
 
-            // 2. El botón aparece si hay ojos detectados
+            // 2. El botón SIEMPRE visible para permitir inicio manual (Mouse) si falla Tobii
             if (botonIniciar != null) {
-                if (botonIniciar.gameObject.activeSelf != ojosDetectados) {
-                    botonIniciar.gameObject.SetActive(ojosDetectados);
+                if (!botonIniciar.gameObject.activeSelf) {
+                    botonIniciar.gameObject.SetActive(true);
                 }
+                // Si queremos ser estrictos con la terapia, podríamos desactivar la interactividad,
+                // pero para evitar bloqueos lo dejaremos siempre interactuable.
+                botonIniciar.interactable = true;
             }
 
             // Lógica de parpadeo (se mantiene porque es interna)
             if (ojosDetectados) {
                 _tiempoOjosCerrados = 0f;
-                float distMedia = (gaze.Left.GazeOriginInUserCoordinates.z + gaze.Right.GazeOriginInUserCoordinates.z) / 20f;
-                _ojosEstablesParaIniciar = (distMedia >= 35 && distMedia <= 95);
+                _ojosEstablesParaIniciar = true;
             } 
             else if (_ojosEstablesParaIniciar) {
                 _tiempoOjosCerrados += Time.deltaTime;
@@ -758,4 +783,6 @@ public class LaberintoManager : BaseActividad
         }
         if (rt != null) Destroy(rt.gameObject);
     }
+
+    // Nota: El método BuscarObjetoInactivo ahora se hereda de BaseActividad
 }

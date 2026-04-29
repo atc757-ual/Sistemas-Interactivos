@@ -147,10 +147,15 @@ public class HistoryManager : MonoBehaviour
     {
         Debug.Log("[History] Configurando botones de detalle...");
         // Ajustamos los nombres de los juegos para que coincidan con la UI y el historial
-        if (btnLaberinto != null) { btnLaberinto.onClick.RemoveAllListeners(); btnLaberinto.onClick.AddListener(() => AbrirDetalle("Laberinto Estelar")); }
-        if (btnLluvia != null) { btnLluvia.onClick.RemoveAllListeners(); btnLluvia.onClick.AddListener(() => AbrirDetalle("Carrera Espacial")); }
-        if (btnLineal != null) { btnLineal.onClick.RemoveAllListeners(); btnLineal.onClick.AddListener(() => AbrirDetalle("Estrella Lineal")); }
-        if (btnExplota != null) { btnExplota.onClick.RemoveAllListeners(); btnExplota.onClick.AddListener(() => AbrirDetalle("Explosión Estelar")); }
+        // Nombres EXACTOS que usan los managers al llamar GuardarPartida:
+        // LaberintoManager    → "Laberinto"
+        // CarreraOcularManager → "Carrera Ocular"
+        // EstrellaLinealManager → "Estrella Lineal"
+        // ExplosionGlobosManager → "Globos"
+        if (btnLaberinto != null) { btnLaberinto.onClick.RemoveAllListeners(); btnLaberinto.onClick.AddListener(() => AbrirDetalle("Laberinto")); }
+        if (btnLluvia   != null) { btnLluvia.onClick.RemoveAllListeners();    btnLluvia.onClick.AddListener(() => AbrirDetalle("Carrera Ocular")); }
+        if (btnLineal   != null) { btnLineal.onClick.RemoveAllListeners();    btnLineal.onClick.AddListener(() => AbrirDetalle("Estrella Lineal")); }
+        if (btnExplota  != null) { btnExplota.onClick.RemoveAllListeners();   btnExplota.onClick.AddListener(() => AbrirDetalle("Globos")); }
 
         if (detBtnClose != null) { detBtnClose.onClick.RemoveAllListeners(); detBtnClose.onClick.AddListener(() => overlayDetalle.SetActive(false)); }
     }
@@ -208,15 +213,15 @@ public class HistoryManager : MonoBehaviour
 
         LimpiarTabla();
 
+        // Header siempre primero
+        CrearFilaElegante("FECHA", "PUNTAJE", "ERRORES", "TIEMPO", true, -1);
+
         int count = 0;
         if (GestorPaciente.Instance != null && GestorPaciente.Instance.pacienteActual != null)
         {
             var pActual = GestorPaciente.Instance.pacienteActual;
-            
-            // 1. Encabezado "Chulísimo"
-            CrearFilaElegante("FECHA", "PUNTAJE", "ERRORES", "TIEMPO", true, -1);
 
-            // 2. Datos con colores alternos
+            // Datos con colores alternos (más reciente primero)
             int rowIdx = 0;
             for (int i = pActual.historialPartidas.Count - 1; i >= 0; i--)
             {
@@ -224,9 +229,9 @@ public class HistoryManager : MonoBehaviour
                 if (p.juego == nombreJuego)
                 {
                     CrearFilaElegante(
-                        p.fecha, 
-                        p.puntuacion.ToString(), 
-                        p.errores.ToString(), 
+                        p.fecha,
+                        p.puntuacion.ToString(),
+                        p.errores.ToString(),
                         p.tiempoJuego.ToString("F1") + "s",
                         false,
                         rowIdx
@@ -236,6 +241,10 @@ public class HistoryManager : MonoBehaviour
                 }
             }
         }
+
+        // txtContenido siempre al final para que quede debajo del header y las filas
+        if (txtContenido != null)
+            txtContenido.transform.SetAsLastSibling();
 
         if (txtContenido != null)
         {

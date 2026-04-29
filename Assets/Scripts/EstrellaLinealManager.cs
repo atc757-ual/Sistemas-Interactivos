@@ -76,39 +76,26 @@ public class EstrellaLinealManager : BaseActividad
     void VincularUIAutomaticamente()
     {
         // Punteros directos según la jerarquía del usuario
-        if (star == null) star = BuscarObjetoPotente("Star")?.GetComponent<RectTransform>();
-        if (distractor == null) distractor = BuscarObjetoPotente("Distractor")?.GetComponent<RectTransform>();
-        
-        if (timerContainer == null) timerContainer = BuscarObjetoPotente("Time");
+        if (star == null) star = BuscarObjetoInactivo("Star")?.GetComponent<RectTransform>();
+        if (distractor == null) distractor = BuscarObjetoInactivo("Distractor")?.GetComponent<RectTransform>();
+        if (timerContainer == null) timerContainer = BuscarObjetoInactivo("Time");
         if (textoTimer == null) textoTimer = timerContainer?.GetComponent<TMP_Text>() ?? timerContainer?.GetComponentInChildren<TMP_Text>();
-
-        if (precText == null) precText = BuscarObjetoPotente("PrecText")?.GetComponent<TMP_Text>();
-        if (avanceText == null) avanceText = BuscarObjetoPotente("AvanceText")?.GetComponent<TMP_Text>();
-        if (barFill == null) barFill = BuscarObjetoPotente("BarFill")?.GetComponent<Image>();
-        
-        if (textoSub == null) {
-            // Buscamos 'Sub' con mayúscula como en la foto
-            textoSub = BuscarObjetoPotente("Sub")?.GetComponent<TMP_Text>();
-        }
-        
+        if (precText == null) precText = BuscarObjetoInactivo("PrecText")?.GetComponent<TMP_Text>();
+        if (avanceText == null) avanceText = BuscarObjetoInactivo("AvanceText")?.GetComponent<TMP_Text>();
+        if (barFill == null) barFill = BuscarObjetoInactivo("BarFill")?.GetComponent<Image>();
+        if (textoSub == null) textoSub = BuscarObjetoInactivo("Sub")?.GetComponent<TMP_Text>();
         if (textoMensajeInicio == null) {
-            GameObject contObj = BuscarObjetoPotente("Contador");
+            GameObject contObj = BuscarObjetoInactivo("Contador");
             if (contObj != null) textoMensajeInicio = contObj.GetComponentInChildren<TMP_Text>(true);
         }
-        
-        if (botonIniciar == null) botonIniciar = BuscarObjetoPotente("StartButton")?.GetComponent<Button>();
-        if (botonSalir == null) botonSalir = BuscarObjetoPotente("VolverBtn")?.GetComponent<Button>();
-        
-        // Bubbles que deben desaparecer
-        if (precBubble == null) precBubble = BuscarObjetoPotente("PrecBubble");
-        if (avanceBubble == null) avanceBubble = BuscarObjetoPotente("AvanceBubble");
-
-        if (overlayInicio == null) overlayInicio = BuscarObjetoPotente("OverlayInicio");
-        if (overlayResult == null) overlayResult = BuscarObjetoPotente("OverlayResult");
-        if (panelDetalle == null) panelDetalle = BuscarObjetoPotente("detalle");
-        
-        // Vincular el fondo para el scroll infinito
-        if (backgroundScroll == null) backgroundScroll = BuscarObjetoPotente("BG")?.GetComponent<RectTransform>() ?? BuscarObjetoPotente("Background")?.GetComponent<RectTransform>();
+        if (botonIniciar == null) botonIniciar = BuscarObjetoInactivo("StartButton")?.GetComponent<Button>();
+        if (botonSalir == null) botonSalir = BuscarObjetoInactivo("VolverBtn")?.GetComponent<Button>() ?? BuscarObjetoInactivo("BackBtn")?.GetComponent<Button>();
+        if (precBubble == null) precBubble = BuscarObjetoInactivo("PrecBubble");
+        if (avanceBubble == null) avanceBubble = BuscarObjetoInactivo("AvanceBubble");
+        if (overlayInicio == null) overlayInicio = BuscarObjetoInactivo("OverlayInicio");
+        if (overlayResult == null) overlayResult = BuscarObjetoInactivo("OverlayResult");
+        if (panelDetalle == null) panelDetalle = BuscarObjetoInactivo("detalle");
+        if (backgroundScroll == null) backgroundScroll = BuscarObjetoInactivo("BG")?.GetComponent<RectTransform>() ?? BuscarObjetoInactivo("Background")?.GetComponent<RectTransform>();
         
         // Forzar activación del inicio para que el Tobii pueda empezar a buscar ojos
         if (overlayInicio != null) overlayInicio.SetActive(true);
@@ -128,7 +115,7 @@ public class EstrellaLinealManager : BaseActividad
         
         // --- PERSONALIZACIÓN DE USUARIO ---
         // Buscar el objeto "Inst" para reemplazar "Astronauta" por el nombre del usuario
-        GameObject instObj = BuscarObjetoPotente("Inst");
+        GameObject instObj = BuscarObjetoInactivo("Inst");
         if (instObj != null) {
             TMP_Text instText = instObj.GetComponent<TMP_Text>();
             if (instText != null && instText.text.Contains("Astronauta")) {
@@ -143,16 +130,7 @@ public class EstrellaLinealManager : BaseActividad
         VincularUIAutomaticamente();
     }
 
-    GameObject BuscarObjetoPotente(string nombre)
-    {
-        GameObject obj = GameObject.Find(nombre);
-        if (obj != null) return obj;
-        string busqueda = nombre.ToLower();
-        foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None)) {
-            if (t.name.Trim().ToLower() == busqueda && !string.IsNullOrEmpty(t.gameObject.scene.name)) return t.gameObject;
-        }
-        return null;
-    }
+    // Nota: El método BuscarObjetoPotente ha sido reemplazado por BuscarObjetoInactivo heredado de BaseActividad
 
     void PreconfigurarPosiciones()
     {

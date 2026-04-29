@@ -128,7 +128,11 @@ public class GestorPaciente : MonoBehaviour
 
     public void GuardarPartida(string nombreJuego, int puntuacion, int nivel, float precision = 0, bool exito = false, float tiempo = 0, int errores = 0)
     {
-        if (pacienteActual == null) return;
+        if (pacienteActual == null)
+        {
+            Debug.LogWarning("[GestorPaciente] GuardarPartida ignorada: sin sesión activa.");
+            return;
+        }
 
         Partida nuevaPartida = new Partida
         {

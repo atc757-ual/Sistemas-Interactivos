@@ -30,20 +30,28 @@ public abstract class BaseActividad : MonoBehaviour
 
     protected virtual void Start()
     {
+        // GUARDIA DE SESIÓN: si no hay login válido, volver al Login
+        if (GestorPaciente.Instance == null || !GestorPaciente.Instance.EsSesionValida())
+        {
+            Debug.LogWarning("[BaseActividad] Sin sesión válida. Redirigiendo a Login.");
+            UnityEngine.SceneManagement.SceneManager.LoadScene("Login");
+            return;
+        }
+
         // Auto-link components if missing
         if (panelInfo == null) panelInfo = GetComponentInChildren<PanelInfo>(true);
-        if (botonInfo == null) botonInfo = GameObject.Find("InfoButton")?.GetComponent<Button>() ?? GameObject.Find("BotonInfo")?.GetComponent<Button>();
-        if (botonPausar == null) botonPausar = GameObject.Find("PauseButton")?.GetComponent<Button>() ?? GameObject.Find("BotonPausa")?.GetComponent<Button>();
-        if (botonSalir == null) botonSalir = GameObject.Find("BackButton")?.GetComponent<Button>() ?? GameObject.Find("VolverBtn")?.GetComponent<Button>() ?? GameObject.Find("SalirBtn")?.GetComponent<Button>();
-        if (botonIniciar == null) botonIniciar = GameObject.Find("StartButton")?.GetComponent<Button>() ?? GameObject.Find("BotonInicio")?.GetComponent<Button>();
-        if (botonReiniciar == null) botonReiniciar = GameObject.Find("RetryButton")?.GetComponent<Button>() ?? GameObject.Find("ReiniciarBtn")?.GetComponent<Button>();
-        if (textoMensajeInicio == null) textoMensajeInicio = GameObject.Find("StartMessage")?.GetComponent<TMP_Text>() ?? GameObject.Find("MensajeInicio")?.GetComponent<TMP_Text>();
+        if (botonInfo == null) botonInfo = BuscarObjetoInactivo("InfoButton")?.GetComponent<Button>() ?? BuscarObjetoInactivo("BotonInfo")?.GetComponent<Button>();
+        if (botonPausar == null) botonPausar = BuscarObjetoInactivo("PauseButton")?.GetComponent<Button>() ?? BuscarObjetoInactivo("BotonPausa")?.GetComponent<Button>();
+        if (botonSalir == null) botonSalir = BuscarObjetoInactivo("VolverBtn")?.GetComponent<Button>() ?? BuscarObjetoInactivo("BackBtn")?.GetComponent<Button>() ?? BuscarObjetoInactivo("SalirBtn")?.GetComponent<Button>() ?? BuscarObjetoInactivo("BackButton")?.GetComponent<Button>();
+        if (botonIniciar == null) botonIniciar = BuscarObjetoInactivo("StartButton")?.GetComponent<Button>() ?? BuscarObjetoInactivo("BotonInicio")?.GetComponent<Button>();
+        if (botonReiniciar == null) botonReiniciar = BuscarObjetoInactivo("RetryButton")?.GetComponent<Button>() ?? BuscarObjetoInactivo("ReiniciarBtn")?.GetComponent<Button>();
+        if (textoMensajeInicio == null) textoMensajeInicio = BuscarObjetoInactivo("StartMessage")?.GetComponent<TMP_Text>() ?? BuscarObjetoInactivo("MensajeInicio")?.GetComponent<TMP_Text>();
         
-        if (botonIniciar != null) botonIniciar.onClick.AddListener(IniciarJuego);
-        if (botonReiniciar != null) botonReiniciar.onClick.AddListener(ReiniciarJuego);
-        if (botonPausar != null) botonPausar.onClick.AddListener(AlternarPausa);
-        if (botonSalir != null) botonSalir.onClick.AddListener(SalirAlMenu);
-        if (botonInfo != null && panelInfo != null) botonInfo.onClick.AddListener(MostrarInfo);
+        if (botonIniciar != null) { botonIniciar.onClick.RemoveAllListeners(); botonIniciar.onClick.AddListener(IniciarJuego); }
+        if (botonReiniciar != null) { botonReiniciar.onClick.RemoveAllListeners(); botonReiniciar.onClick.AddListener(ReiniciarJuego); }
+        if (botonPausar != null) { botonPausar.onClick.RemoveAllListeners(); botonPausar.onClick.AddListener(AlternarPausa); }
+        if (botonSalir != null) { botonSalir.onClick.RemoveAllListeners(); botonSalir.onClick.AddListener(SalirAlMenu); }
+        if (botonInfo != null && panelInfo != null) { botonInfo.onClick.RemoveAllListeners(); botonInfo.onClick.AddListener(MostrarInfo); }
 
         // Estilo Senior: Botón Salir siempre vibrante y disponible
         if (botonSalir != null) {
@@ -57,6 +65,16 @@ public abstract class BaseActividad : MonoBehaviour
         
         // Iniciar monitoreo de ojos para el botón INICIAR
         StartCoroutine(RutinaValidacionOjosInicio());
+    }
+
+    protected GameObject BuscarObjetoInactivo(string nombre)
+    {
+        if (string.IsNullOrEmpty(nombre)) return null;
+        string busqueda = nombre.ToLower();
+        foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None)) {
+            if (t.name.Trim().ToLower() == busqueda) return t.gameObject;
+        }
+        return null;
     }
 
     private IEnumerator RutinaValidacionOjosInicio()
@@ -157,7 +175,7 @@ public abstract class BaseActividad : MonoBehaviour
             foreach (var r in results)
             {
                 string n = r.gameObject.name.ToLower();
-                if (n.Contains("back") || n.Contains("salir") || n.Contains("menu") || n.Contains("atras"))
+                if (n.Contains("back") || n.Contains("salir") || n.Contains("menu") || n.Contains("atras") || n.Contains("volver"))
                 {
                     SalirAlMenu();
                 }

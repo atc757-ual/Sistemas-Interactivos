@@ -37,6 +37,8 @@ public class ExplosionGlobosManager : MonoBehaviour
     [SerializeField] Button startBtn;
     [SerializeField] Button retryBtn; 
     [SerializeField] Image flashDano;
+    [SerializeField] RectTransform heartsContainer;
+    private List<Image> _lifeIcons = new();
 
     private GameState _state;
     private List<BalloonController> _activeItems = new();
@@ -60,20 +62,54 @@ public class ExplosionGlobosManager : MonoBehaviour
         if (canvas != null)
         {
             if (overlayInicio == null) overlayInicio = canvas.transform.Find("OverlayInicio")?.gameObject;
-            if (overlayFinal == null) overlayFinal = canvas.transform.Find("OverlayFinal")?.gameObject;
+            // Acepta tanto "OverlayFinal" como "OverlayResult" como nombre del overlay de resultados
+            if (overlayFinal == null) overlayFinal = canvas.transform.Find("OverlayFinal")?.gameObject
+                                                  ?? canvas.transform.Find("OverlayResult")?.gameObject;
             if (playerCursor == null) playerCursor = canvas.transform.Find("PlayerCursor")?.gameObject;
             
-            // Creamos un clon oculto para usar como plantilla y que no estorbe el original
+            // Creamos un clon oculto para usar como plantilla ANTES de tocar el cursor
             if (itemTemplate == null && playerCursor != null) {
                 itemTemplate = Instantiate(playerCursor, container);
                 itemTemplate.name = "ItemTemplate_Hidden";
                 itemTemplate.SetActive(false);
+
+                // Desacoplar: el template ya tiene el sprite del meteorito (clonado arriba).
+                // Ahora limpiamos el sprite del PlayerCursor para que sea invisible y no
+                // compita visualmente con los ítems — solo su RectTransform sigue la mirada.
+                var cursorImg = playerCursor.GetComponent<Image>();
+                if (cursorImg != null) {
+                    cursorImg.sprite = null;
+                    cursorImg.color = Color.clear; // totalmente transparente
+                }
             }
             if (container == null) container = canvas.GetComponent<RectTransform>();
             if (timerText == null) timerText = canvas.transform.Find("TimerText")?.GetComponent<TMP_Text>();
             if (fallosText == null) fallosText = canvas.transform.Find("fallos")?.GetComponent<TMP_Text>();
             if (flashDano == null) flashDano = canvas.transform.Find("FlashDano")?.GetComponent<Image>();
-            if (volverBtn == null) volverBtn = canvas.transform.Find("VolverBtn")?.GetComponent<Button>();
+
+            // VolverBtn: buscar primero en raíz del Canvas, luego dentro del OverlayFinal
+            if (volverBtn == null) {
+                volverBtn = canvas.transform.Find("VolverBtn")?.GetComponent<Button>()
+                         ?? canvas.transform.Find("BackBtn")?.GetComponent<Button>()
+                         ?? canvas.transform.Find("BotonVolver")?.GetComponent<Button>();
+            }
+            // Si no estaba en la raíz, buscar dentro del overlay de resultados
+            if (volverBtn == null && overlayFinal != null) {
+                volverBtn = FindInChildRecursive(overlayFinal.transform, "VolverBtn")?.GetComponent<Button>()
+                         ?? FindInChildRecursive(overlayFinal.transform, "BackBtn")?.GetComponent<Button>()
+                         ?? FindInChildRecursive(overlayFinal.transform, "BotonVolver")?.GetComponent<Button>();
+            }
+
+            if (heartsContainer == null) {
+                var hc = canvas.transform.Find("HeartsContainer");
+                if (hc != null) heartsContainer = hc.GetComponent<RectTransform>();
+            }
+
+            // Asignar listener al VolverBtn (sin importar dónde se encontró)
+            if (volverBtn != null) {
+                volverBtn.onClick.RemoveAllListeners();
+                volverBtn.onClick.AddListener(() => SceneManager.LoadScene("Activities"));
+            }
             
             if (textoContador == null && overlayInicio != null) 
                 textoContador = FindInChildRecursive(overlayInicio.transform, "TextoContador")?.GetComponent<TMP_Text>();
@@ -100,6 +136,20 @@ public class ExplosionGlobosManager : MonoBehaviour
 
         // Forzamos 20 elementos si el usuario así lo quiere
         if (cantidadItems < 20) cantidadItems = 20;
+
+        VincularCorazones();
+    }
+
+
+    void VincularCorazones()
+    {
+        if (heartsContainer == null) return;
+        _lifeIcons.Clear();
+        foreach (Transform child in heartsContainer)
+        {
+            Image img = child.GetComponent<Image>();
+            if (img != null) _lifeIcons.Add(img);
+        }
     }
 
     Transform FindInChildRecursive(Transform parent, string name)
@@ -202,6 +252,12 @@ public class ExplosionGlobosManager : MonoBehaviour
         if (playerCursor != null) playerCursor.SetActive(true);
 
         _timerRunning = true;
+
+        if (heartsContainer) heartsContainer.gameObject.SetActive(true);
+        foreach (var icon in _lifeIcons) {
+            if (icon) icon.color = Color.white;
+            if (icon) icon.gameObject.SetActive(true);
+        }
     }
 
     void SetState(GameState state)
@@ -229,6 +285,7 @@ public class ExplosionGlobosManager : MonoBehaviour
         }
         if (timerText) timerText.gameObject.SetActive(isPlaying);
         if (fallosText) fallosText.gameObject.SetActive(isPlaying);
+        if (heartsContainer) heartsContainer.gameObject.SetActive(isPlaying);
         if (playerCursor) playerCursor.SetActive(isPlaying);
         if (volverBtn) volverBtn.gameObject.SetActive(!isPlaying);
         if (flashDano) flashDano.gameObject.SetActive(false);
@@ -287,6 +344,12 @@ public class ExplosionGlobosManager : MonoBehaviour
             _vidasRestantes--;
             _errors++;
             UpdateFallosUI();
+            
+            if (_vidasRestantes > 0 && _vidasRestantes <= _lifeIcons.Count)
+            {
+                StartCoroutine(RutinaTintineoVida(_lifeIcons[_vidasRestantes]));
+            }
+
             StartCoroutine(DoFlashDano());
             item.FlashError();
             if (_vidasRestantes <= 0) EndGame(false);
@@ -302,6 +365,30 @@ public class ExplosionGlobosManager : MonoBehaviour
         flashDano.color = new Color(1, 0, 0, 0.4f);
         yield return new WaitForSeconds(0.2f);
         flashDano.gameObject.SetActive(false);
+    }
+
+    private IEnumerator RutinaTintineoVida(Image icon)
+    {
+        if (icon == null) yield break;
+
+        // Tintineo (Flicker)
+        for (int i = 0; i < 4; i++)
+        {
+            icon.color = new Color(1, 1, 1, 0.2f);
+            yield return new WaitForSeconds(0.05f);
+            icon.color = new Color(1, 1, 1, 1.0f);
+            yield return new WaitForSeconds(0.05f);
+        }
+
+        // Fade out
+        float t = 0;
+        while (t < 1f)
+        {
+            t += Time.deltaTime * 3f;
+            icon.color = new Color(1, 1, 1, 1 - t);
+            yield return null;
+        }
+        icon.gameObject.SetActive(false);
     }
 
     void EndGame(bool success)

@@ -102,16 +102,8 @@ public class CarreraOcularManager : BaseActividad
     void VincularUI()
     {
         // --- AUTO VINCULAR ELEMENTOS BASE ---
+        // Nota: BaseActividad ya vincula botonSalir, botonIniciar y botonReiniciar
         if (overlayInicio == null) overlayInicio = BuscarObjetoInactivo("OverlayInicio");
-        
-        // ¡SOBRESCRIBIR botón iniciar por si en el Inspector está puesto uno viejo invisible!
-        var btnStart = BuscarObjetoInactivo("StartButton");
-        if (btnStart != null) botonIniciar = btnStart.GetComponent<Button>();
-        
-        if (botonSalir == null) {
-            var btnBack = BuscarObjetoInactivo("BackBtn");
-            if (btnBack != null) botonSalir = btnBack.GetComponent<Button>();
-        }
 
         // Si no están asignados, los buscamos por nombre
         if (jugador == null) jugador = GameObject.Find("Player")?.GetComponent<RectTransform>();
@@ -121,6 +113,21 @@ public class CarreraOcularManager : BaseActividad
         if (textoTimer == null) {
             var t = BuscarObjetoInactivo("Timer");
             if (t != null) textoTimer = t.GetComponent<TMP_Text>();
+        }
+
+        // --- AUTO VINCULAR ICONOS DE VIDAS ---
+        if (iconosVidas == null || iconosVidas.Count == 0) {
+            iconosVidas = new List<Image>();
+            GameObject container = BuscarObjetoInactivo("HeartsContainer") ?? BuscarObjetoInactivo("VidasContainer");
+            if (container != null) {
+                foreach (Transform child in container.transform) {
+                    Image img = child.GetComponent<Image>();
+                    if (img != null) iconosVidas.Add(img);
+                }
+                Debug.Log($"<color=cyan>CARRERA OCULAR: Vinculados {iconosVidas.Count} iconos de vida.</color>");
+            } else {
+                Debug.LogWarning("<color=orange>CARRERA OCULAR: No se encontró HeartsContainer.</color>");
+            }
         }
         
         // --- AUTO VINCULAR RESULTADOS (INCLUSO INACTIVOS) ---
@@ -175,15 +182,7 @@ public class CarreraOcularManager : BaseActividad
         }
     }
 
-    GameObject BuscarObjetoInactivo(string nombre)
-    {
-        string busqueda = nombre.ToLower();
-        foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None)) {
-            if (t.name.Trim().ToLower() == busqueda && !string.IsNullOrEmpty(t.gameObject.scene.name)) return t.gameObject;
-        }
-        return null;
-    }
-
+    // Nota: El método BuscarObjetoInactivo ahora se hereda de BaseActividad
     void PreconfigurarEscena()
     {
         // Configurar fondo infinito
@@ -209,6 +208,22 @@ public class CarreraOcularManager : BaseActividad
     public override void IniciarJuego()
     {
         if (_enConteo || juegoIniciado) return;
+
+        // Reset de estado
+        _vidasActuales = vidasMaximas;
+        _colisiones = 0;
+        _tiempoTranscurrido = 0f;
+        _juegoFinalizado = false;
+
+        // Restaurar visual de las vidas
+        if (iconosVidas != null) {
+            foreach (var img in iconosVidas) {
+                if (img != null) {
+                    img.color = Color.white;
+                    img.enabled = true;
+                }
+            }
+        }
         
         // Ocultar botón volver durante la partida
         if (botonSalir != null) botonSalir.gameObject.SetActive(false);
@@ -297,7 +312,8 @@ public class CarreraOcularManager : BaseActividad
 
             // FALLBACK A PRUEBA DE BALAS: Si el botón UI está bloqueado por algún panel invisible,
             // cualquier clic de ratón en la pantalla forzará el inicio de la partida.
-            if (!_enConteo && UnityEngine.Input.GetMouseButtonDown(0))
+            // IMPORTANTE: solo activo en el OverlayInicio, NO después de finalizar la partida.
+            if (!_enConteo && !_juegoFinalizado && UnityEngine.Input.GetMouseButtonDown(0))
             {
                 IniciarJuego();
             }
@@ -424,11 +440,13 @@ public class CarreraOcularManager : BaseActividad
             RectTransform obs = _obstaculosActivos[i];
             obs.anchoredPosition += Vector2.left * velocidadObstaculos * Time.deltaTime;
 
-            // Detección de colisión: Radio aumentado a 85 para ser más permisivo
-            if (Vector3.Distance(obs.position, jugador.position) < 85f) 
+            // Detección de colisión: Radio aumentado a 130 para mayor precisión visual
+            if (Vector3.Distance(obs.position, jugador.position) < 130f) 
             {
+                Debug.Log($"<color=red>COLISIÓN DETECTADA</color> con {obs.name}. Vidas restantes: {_vidasActuales - 1}");
                 RecibirDano();
-                Destroy(obs.gameObject);
+                // En lugar de destruir inmediatamente, iniciamos efecto visual
+                StartCoroutine(RutinaMuerteObstaculo(obs.gameObject));
                 _obstaculosActivos.RemoveAt(i);
                 continue;
             }
@@ -521,7 +539,12 @@ public class CarreraOcularManager : BaseActividad
         // Tintineo en la vida perdida
         if (iconosVidas != null && _vidasActuales >= 0 && _vidasActuales < iconosVidas.Count)
         {
+            Debug.Log($"<color=yellow>TINTINEO VIDA:</color> Index {_vidasActuales} de {iconosVidas.Count}");
             StartCoroutine(RutinaTintineoVida(iconosVidas[_vidasActuales]));
+        }
+        else
+        {
+            Debug.LogWarning($"<color=orange>VIDAS UI ERROR:</color> No se pudo tintinear vida. Index: {_vidasActuales}, Count: {iconosVidas?.Count ?? 0}");
         }
         
         if (_vidasActuales <= 0)
@@ -552,19 +575,49 @@ public class CarreraOcularManager : BaseActividad
     private IEnumerator RutinaTintineoVida(Image icono)
     {
         if (icono == null) yield break;
-        Color col = icono.color;
         
         // Tintineo rápido
         for (int i = 0; i < 5; i++)
         {
             icono.enabled = false;
-            yield return new WaitForSeconds(0.1f);
+            yield return new WaitForSeconds(0.08f);
             icono.enabled = true;
-            yield return new WaitForSeconds(0.1f);
+            yield return new WaitForSeconds(0.08f);
         }
 
-        // Se apaga/vuelve gris
-        icono.color = new Color(0.3f, 0.3f, 0.3f, 0.4f);
+        // Se apaga/vuelve casi invisible
+        icono.color = new Color(0.1f, 0.1f, 0.1f, 0.2f); 
+    }
+
+    private IEnumerator RutinaMuerteObstaculo(GameObject obs)
+    {
+        if (obs == null) yield break;
+        
+        Image img = obs.GetComponent<Image>();
+        if (img == null) {
+            Destroy(obs);
+            yield break;
+        }
+
+        // Tintineo más rápido y fade-out
+        for (int i = 0; i < 4; i++)
+        {
+            img.color = new Color(img.color.r, img.color.g, img.color.b, 0.2f);
+            yield return new WaitForSeconds(0.04f);
+            img.color = new Color(img.color.r, img.color.g, img.color.b, 1.0f);
+            yield return new WaitForSeconds(0.04f);
+        }
+
+        // Desvanecimiento final rápido
+        float t = 0;
+        while (t < 1f) {
+            t += Time.deltaTime * 8f;
+            img.color = new Color(img.color.r, img.color.g, img.color.b, 1 - t);
+            obs.transform.localScale = Vector3.one * (1 - t * 0.5f);
+            yield return null;
+        }
+
+        Destroy(obs);
     }
 
     void ActualizarReloj()
