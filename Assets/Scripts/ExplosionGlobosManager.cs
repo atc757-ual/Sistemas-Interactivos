@@ -11,7 +11,7 @@ public class ExplosionGlobosManager : MonoBehaviour
     public enum GameState { Inicio, Playing, Results }
 
     [Header("Configuración")]
-    [SerializeField] int   cantidadItems      = 20;
+    [SerializeField] int   cantidadItems      = 7;
     [SerializeField] float tiempoSesion       = 60f;
     [SerializeField] int   maxVidas           = 3;
     [SerializeField] bool  useEyeTracking     = true;

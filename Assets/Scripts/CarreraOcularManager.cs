@@ -342,23 +342,18 @@ public class CarreraOcularManager : BaseActividad
 
     void ProcesarEntradaTobii()
     {
-        if (EyeTracker.Instance == null) return;
+        if (TobiiGazeProvider.Instance == null) return;
         
-        var gaze = EyeTracker.Instance.LatestGazeData;
-        if (gaze == null || (!gaze.Left.GazePointValid && !gaze.Right.GazePointValid)) return;
+        var gazePoint = TobiiGazeProvider.Instance.LastGazePoint;
+        if (!gazePoint.IsRecent) return;
 
-        // Promedio de mirada en coordenadas 0..1 (Y: 0 abajo, 1 arriba en Tobii GazePointOnDisplayArea? No, Tobii es 0 top)
-        // En Tobii SDK para Unity, GazePointOnDisplayArea.y es 0 en el borde SUPERIOR de la pantalla.
-        float avgY = 0;
-        int count = 0;
-        if (gaze.Left.GazePointValid) { avgY += gaze.Left.GazePointOnDisplayArea.y; count++; }
-        if (gaze.Right.GazePointValid) { avgY += gaze.Right.GazePointOnDisplayArea.y; count++; }
-        avgY /= count;
+        // Usamos el Viewport de TobiiGazeProvider: 
+        // En Unity Viewport, 0 es abajo y 1 es arriba.
+        float y = gazePoint.Viewport.y;
 
-        // Si avgY < 0.4 (ZONA SUPERIOR, porque 0 es TOP), vamos ARRIBA.
-        // Si avgY > 0.6 (ZONA INFERIOR, porque 1 es BOTTOM), vamos ABAJO.
-        if (avgY < 0.4f) _targetY = alturaArriba;
-        else if (avgY > 0.6f) _targetY = alturaAbajo;
+        // Si mira al 40% superior, sube. Al 40% inferior, baja.
+        if (y > 0.6f) _targetY = alturaArriba;
+        else if (y < 0.4f) _targetY = alturaAbajo;
         else _targetY = alturaCentro;
     }
 
