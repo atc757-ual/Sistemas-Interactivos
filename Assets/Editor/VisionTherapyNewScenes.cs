@@ -7,71 +7,9 @@ using UnityEditor.SceneManagement;
 
 public class VisionTherapyNewScenes : EditorWindow
 {
-    // [MenuItem("Tools/Vision Therapy/Build Globos Scene")]
-    public static void BuildGlobos()
-    {
-        Scene newScene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
-        
-        // Setup UI
-        GameObject canvasObj = new GameObject("Canvas");
-        Canvas canvas = canvasObj.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920, 1030);
-        canvasObj.AddComponent<GraphicRaycaster>();
+    // BuildGlobos was removed because GlobosManager is legacy.
 
-        // Añadir EventSystem (indispensable para que los botones funcionen)
-        if (Object.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
-        {
-            GameObject esObj = new GameObject("EventSystem");
-            esObj.AddComponent<UnityEngine.EventSystems.EventSystem>();
-            esObj.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
-        }
-
-        GameObject uiObj = new GameObject("UI");
-        uiObj.transform.SetParent(canvasObj.transform, false);
-
-        // Contenedor de Globos
-        GameObject globosCont = new GameObject("BalloonsContainer");
-        globosCont.transform.SetParent(canvasObj.transform, false);
-        RectTransform globosRT = globosCont.AddComponent<RectTransform>();
-        globosRT.anchorMin = Vector2.zero; globosRT.anchorMax = Vector2.one; globosRT.sizeDelta = Vector2.zero;
-
-        // 8. Crear Panel de Éxito (Persistente en Jerarquía)
-        GameObject overlay = new GameObject("FinalOverlay");
-        overlay.transform.SetParent(canvasObj.transform, false);
-        RectTransform rtOver = overlay.AddComponent<RectTransform>();
-        rtOver.anchorMin = Vector2.zero;
-        rtOver.anchorMax = Vector2.one;
-        rtOver.sizeDelta = Vector2.zero;
-        
-        Image imgOver = overlay.AddComponent<Image>();
-        imgOver.color = new Color(0, 0, 0, 0.8f); // Fondo oscuro por defecto
-        
-        GameObject txtFinalGO = new GameObject("TextoFinal");
-        txtFinalGO.transform.SetParent(overlay.transform, false);
-        TextMeshProUGUI txtFinal = txtFinalGO.AddComponent<TextMeshProUGUI>();
-        txtFinal.text = "¡MENSAJE FINAL!";
-        txtFinal.fontSize = 80;
-        txtFinal.alignment = TextAlignmentOptions.Center;
-        txtFinal.color = Color.white;
-        
-        overlay.SetActive(false); // Oculto por defecto
-
-        // Manager
-        GameObject managerObj = new GameObject("GameManager");
-        GlobosManager manager = managerObj.AddComponent<GlobosManager>();
-        manager.contenedorGlobos = globosRT;
-        manager.overlayGanaste = overlay;
-
-        // Botones Comunes
-        SetupCommonUI(canvasObj, manager);
-
-        EditorSceneManager.SaveScene(newScene, "Assets/Scenes/ExplosionGlobos.unity");
-    }
-
-    // [MenuItem("Tools/Vision Therapy/Build Laberinto Scene")]
+    [MenuItem("Tools/Vision Therapy/Build Laberinto Scene")]
     public static void BuildLaberinto()
     {
         Scene newScene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
