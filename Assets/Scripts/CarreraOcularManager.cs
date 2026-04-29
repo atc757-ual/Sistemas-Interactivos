@@ -344,16 +344,14 @@ public class CarreraOcularManager : BaseActividad
     {
         if (TobiiGazeProvider.Instance == null) return;
         
-        var gazePoint = TobiiGazeProvider.Instance.LastGazePoint;
-        if (!gazePoint.IsRecent) return;
+        if (!TobiiGazeProvider.Instance.HasGaze) return;
 
-        // Usamos el Viewport de TobiiGazeProvider: 
-        // En Unity Viewport, 0 es abajo y 1 es arriba.
-        float y = gazePoint.Viewport.y;
+        // GazePositionScreen está en píxeles (Y=0 abajo, Y=Height arriba)
+        float yNorm = TobiiGazeProvider.Instance.GazePositionScreen.y / Screen.height;
 
         // Si mira al 40% superior, sube. Al 40% inferior, baja.
-        if (y > 0.6f) _targetY = alturaArriba;
-        else if (y < 0.4f) _targetY = alturaAbajo;
+        if (yNorm > 0.6f) _targetY = alturaArriba;
+        else if (yNorm < 0.4f) _targetY = alturaAbajo;
         else _targetY = alturaCentro;
     }
 
