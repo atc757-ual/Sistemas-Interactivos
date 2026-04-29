@@ -61,9 +61,9 @@ public class GlobosGameManager : MonoBehaviour
     {
         // Botones
         _ui.RegisterBtnIniciar(OnBtnIniciarClicked);
-        _ui.RegisterBtnVolver(() => SceneManager.LoadScene("Activities"));
+        _ui.RegisterBtnVolver(() => { Time.timeScale = 1f; SceneManager.LoadScene("Activities"); });
         _ui.RegisterBtnReintentar(Reiniciar);
-        _ui.RegisterBtnVolverResults(() => SceneManager.LoadScene("Activities"));
+        _ui.RegisterBtnVolverResults(() => { Time.timeScale = 1f; SceneManager.LoadScene("Activities"); });
 
         // Suscribir eventos del timer
         GameTimer.OnTimeUp         += OnTimerUp;
@@ -163,6 +163,7 @@ public class GlobosGameManager : MonoBehaviour
         {
             _errors++;
             balloon.FlashError();
+            balloon.ResetActivated();
             _timer.ApplyPenalty();
             OnWrongBalloon?.Invoke();
         }
@@ -208,6 +209,7 @@ public class GlobosGameManager : MonoBehaviour
         _spawner.ClearContainer();
         _balloons.Clear();
         _gameOverFired = false;
+        Time.timeScale = 1f;
         SetState(GameState.Inicio);
     }
 }

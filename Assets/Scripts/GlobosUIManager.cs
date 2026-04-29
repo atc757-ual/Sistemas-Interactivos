@@ -36,6 +36,12 @@ public class GlobosUIManager : MonoBehaviour
     [SerializeField] Button   btnReintentar;
     [SerializeField] Button   btnVolverResults;
 
+    [Header("PanelResultados — fila métricas (opcional)")]
+    [SerializeField] TMP_Text textoFilaGlobos;
+    [SerializeField] TMP_Text textoFilaTiempo;
+    [SerializeField] TMP_Text textoFilaErrores;
+    [SerializeField] GameObject seccionHistorico;
+
     private Canvas _rootCanvas;
 
     void Awake()
@@ -72,6 +78,39 @@ public class GlobosUIManager : MonoBehaviour
             if (textoTimer       == null) textoTimer       = FindChildByName<TMP_Text>(panelGame, "TimerText");
             if (textoInstruccion == null) textoInstruccion = FindChildByName<TMP_Text>(panelGame, "InstruccionText");
         }
+
+        if (panelResults != null)
+        {
+            if (textoTitulo       == null) textoTitulo       = FindChildByName<TMP_Text>(panelResults, "TituloResultado")
+                                                            ?? FindChildByName<TMP_Text>(panelResults, "TituloRango");
+            if (textoMensaje      == null) textoMensaje      = FindChildByName<TMP_Text>(panelResults, "TextoMensaje");
+            if (textoPuntuacion   == null) textoPuntuacion   = FindChildByName<TMP_Text>(panelResults, "TextoPuntuacion");
+            if (barPrecision      == null) barPrecision      = FindChildByName<Image>(panelResults, "BarPrecision");
+            if (barVelocidad      == null) barVelocidad      = FindChildByName<Image>(panelResults, "BarVelocidad");
+            if (barConsistencia   == null) barConsistencia   = FindChildByName<Image>(panelResults, "BarConsistencia");
+            if (valorPrecision    == null) valorPrecision    = FindChildByName<TMP_Text>(panelResults, "ValorPrecision");
+            if (valorVelocidad    == null) valorVelocidad    = FindChildByName<TMP_Text>(panelResults, "ValorVelocidad");
+            if (valorConsistencia == null) valorConsistencia = FindChildByName<TMP_Text>(panelResults, "ValorConsistencia");
+            if (btnReintentar     == null) btnReintentar     = FindChildByName<Button>(panelResults, "BtnReintentar");
+            if (btnVolverResults  == null) btnVolverResults  = FindChildByName<Button>(panelResults, "BtnVolver");
+            if (textoFilaGlobos   == null) textoFilaGlobos   = FindChildByName<TMP_Text>(panelResults, "TextoGlobos")
+                                                            ?? FindChildByName<TMP_Text>(panelResults, "FilaGlobos");
+            if (textoFilaTiempo   == null) textoFilaTiempo   = FindChildByName<TMP_Text>(panelResults, "TextoTiempo")
+                                                            ?? FindChildByName<TMP_Text>(panelResults, "FilaTiempo");
+            if (textoFilaErrores  == null) textoFilaErrores  = FindChildByName<TMP_Text>(panelResults, "TextoErrores")
+                                                            ?? FindChildByName<TMP_Text>(panelResults, "FilaErrores");
+            if (seccionHistorico  == null)
+            {
+                var t = FindChildByName<RectTransform>(panelResults, "SeccionHistorico");
+                if (t != null) seccionHistorico = t.gameObject;
+            }
+        }
+
+        if (btnReintentar    == null) Debug.LogWarning("[GlobosUI] btnReintentar no encontrado — verificar nombre 'BtnReintentar' en PanelResultados.");
+        if (btnVolverResults == null) Debug.LogWarning("[GlobosUI] btnVolverResults no encontrado — verificar nombre 'BtnVolver' en PanelResultados.");
+        if (barPrecision     == null) Debug.LogWarning("[GlobosUI] barPrecision no encontrado — verificar nombre 'BarPrecision'.");
+        if (barVelocidad     == null) Debug.LogWarning("[GlobosUI] barVelocidad no encontrado — verificar nombre 'BarVelocidad'.");
+        if (barConsistencia  == null) Debug.LogWarning("[GlobosUI] barConsistencia no encontrado — verificar nombre 'BarConsistencia'.");
     }
 
     // ─── Registro de botones ──────────────────────────────────────────────────
@@ -174,9 +213,25 @@ public class GlobosUIManager : MonoBehaviour
     {
         ShowState(GameState.Results);
 
+        Debug.Log($"[GlobosUI] Resultados — Precisión={data.precisionScore:F1} Velocidad={data.velocidadScore:F1} Consistencia={data.consistenciaScore:F1} Final={data.finalScore:F1}");
+
         if (textoTitulo     != null) { textoTitulo.text = data.scoreRange; textoTitulo.color = GetRangeColor(data.finalScore); }
         if (textoMensaje    != null) textoMensaje.text    = data.scoreMessage;
         if (textoPuntuacion != null) textoPuntuacion.text = "0";
+
+        if (textoFilaGlobos  != null) textoFilaGlobos.text  = $"{data.balloonsPopped}/{data.totalBalloons} globos";
+        if (textoFilaTiempo  != null) textoFilaTiempo.text  = $"{data.timeUsed:F1}s";
+        if (textoFilaErrores != null) textoFilaErrores.text = $"{data.errors} error{(data.errors != 1 ? "es" : "")}";
+
+        if (seccionHistorico != null)
+        {
+            int hist = PatientDataManager.Instance != null ? PatientDataManager.Instance.GetGlobosHistory().Count : 0;
+            seccionHistorico.SetActive(hist >= 2);
+        }
+
+        // Reconstruir layout ANTES del fade para que el panel tenga altura correcta
+        Canvas.ForceUpdateCanvases();
+        if (panelResults != null) LayoutRebuilder.ForceRebuildLayoutImmediate(panelResults.GetComponent<RectTransform>());
 
         if (btnReintentar    != null) btnReintentar.gameObject.SetActive(false);
         if (btnVolverResults != null) btnVolverResults.gameObject.SetActive(false);
@@ -203,6 +258,12 @@ public class GlobosUIManager : MonoBehaviour
 
         if (btnReintentar    != null) btnReintentar.gameObject.SetActive(true);
         if (btnVolverResults != null) btnVolverResults.gameObject.SetActive(true);
+
+        if (panelResults != null)
+        {
+            Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(panelResults.GetComponent<RectTransform>());
+        }
     }
 
     // ─── Helpers de animación ─────────────────────────────────────────────────
@@ -229,7 +290,11 @@ public class GlobosUIManager : MonoBehaviour
     IEnumerator AnimFill(Image bar, TMP_Text label, float target, float dur)
     {
         if (bar == null) yield break;
+        bar.type       = Image.Type.Filled;
+        bar.fillMethod = Image.FillMethod.Horizontal;
+        bar.fillOrigin = (int)Image.OriginHorizontal.Left;
         bar.fillAmount = 0f;
+        Debug.Log($"[GlobosUI] AnimFill {bar.name} → target={target:F2} ({Mathf.RoundToInt(target * 100f)})");
         float elapsed = 0f;
         while (elapsed < dur)
         {

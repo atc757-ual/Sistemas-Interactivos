@@ -135,6 +135,8 @@ public class BalloonController : MonoBehaviour
 
     public void FlashError() { StartCoroutine(AnimFlash()); }
 
+    public void ResetActivated() { _activated = false; ResetGaze(); }
+
     private IEnumerator AnimEntrada()
     {
         float t = 0f;
