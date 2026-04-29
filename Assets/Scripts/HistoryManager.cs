@@ -200,61 +200,102 @@ public class HistoryManager : MonoBehaviour
     {
         Debug.Log("[History] Intentando abrir detalle de: " + nombreJuego);
         
-        // Si por alguna razón no se vincularon al inicio, re-vinculamos ahora
         if (overlayDetalle == null || txtContenido == null) AutoVincular();
-
         if (overlayDetalle == null) return;
         overlayDetalle.SetActive(true);
 
         if (detNombreJuego != null) detNombreJuego.text = nombreJuego.ToUpper();
 
-        if (txtContenido != null)
-        {
-            txtContenido.gameObject.SetActive(true);
-            txtContenido.text = "Cargando datos...";
-        }
+        LimpiarTabla();
 
-        System.Text.StringBuilder sb = new System.Text.StringBuilder();
         int count = 0;
-
         if (GestorPaciente.Instance != null && GestorPaciente.Instance.pacienteActual != null)
         {
             var pActual = GestorPaciente.Instance.pacienteActual;
             
-            sb.AppendLine("<size=120%>FECHA            PUNTAJE    ERRORES    TIEMPO</size>");
-            sb.AppendLine("------------------------------------------------------------------");
+            // 1. Encabezado "Chulísimo"
+            CrearFilaElegante("FECHA", "PUNTAJE", "ERRORES", "TIEMPO", true, -1);
 
+            // 2. Datos con colores alternos
+            int rowIdx = 0;
             for (int i = pActual.historialPartidas.Count - 1; i >= 0; i--)
             {
                 Partida p = pActual.historialPartidas[i];
                 if (p.juego == nombreJuego)
                 {
-                    string fila = string.Format("{0,-16}   {1,-8}   {2,-8}   {3,-8}",
-                        p.fecha, p.puntuacion, p.errores, p.tiempoJuego.ToString("F1") + "s");
-                    
-                    sb.AppendLine(fila);
-                    Debug.Log("[History] DATA: " + fila);
+                    CrearFilaElegante(
+                        p.fecha, 
+                        p.puntuacion.ToString(), 
+                        p.errores.ToString(), 
+                        p.tiempoJuego.ToString("F1") + "s",
+                        false,
+                        rowIdx
+                    );
                     count++;
+                    rowIdx++;
                 }
             }
         }
 
         if (txtContenido != null)
         {
+            txtContenido.gameObject.SetActive(count == 0);
             if (count == 0)
             {
                 txtContenido.text = (GestorPaciente.Instance?.pacienteActual != null)
                     ? "Aún no has completado esta misión"
                     : "SESIÓN NO INICIADA";
             }
-            else
-            {
-                txtContenido.text = sb.ToString();
-            }
         }
+    }
+
+    void CrearFilaElegante(string c1, string c2, string c3, string c4, bool esEncabezado, int index)
+    {
+        if (tableContainer == null) return;
+
+        // Crear contenedor de fila
+        GameObject filaObj = new GameObject("Fila_" + (esEncabezado ? "Header" : index.ToString()));
+        filaObj.transform.SetParent(tableContainer, false);
+        
+        RectTransform rtFila = filaObj.AddComponent<RectTransform>();
+        rtFila.sizeDelta = new Vector2(0, 45); // Altura de fila
+
+        // Fondo de la fila
+        Image imgFila = filaObj.AddComponent<Image>();
+        if (esEncabezado)
+            imgFila.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
         else
-        {
-            Debug.LogError("[History] Error fatal: txtContenido es nulo. No se puede mostrar el historial.");
+            imgFila.color = (index % 2 == 0) ? new Color(1, 1, 1, 0.05f) : new Color(0, 0, 0, 0.1f);
+
+        // Layout horizontal
+        HorizontalLayoutGroup hlg = filaObj.AddComponent<HorizontalLayoutGroup>();
+        hlg.childControlWidth = true;
+        hlg.childForceExpandWidth = true;
+        hlg.padding = new RectOffset(10, 10, 5, 5);
+        hlg.spacing = 10;
+
+        // Crear celdas
+        CrearCeldaElegante(filaObj.transform, c1, esEncabezado, TextAlignmentOptions.Left);
+        CrearCeldaElegante(filaObj.transform, c2, esEncabezado, TextAlignmentOptions.Center);
+        CrearCeldaElegante(filaObj.transform, c3, esEncabezado, TextAlignmentOptions.Center);
+        CrearCeldaElegante(filaObj.transform, c4, esEncabezado, TextAlignmentOptions.Right);
+    }
+
+    void CrearCeldaElegante(Transform parent, string texto, bool negrita, TextAlignmentOptions alig)
+    {
+        GameObject celdaObj = new GameObject("Celda");
+        celdaObj.transform.SetParent(parent, false);
+        
+        TMP_Text t = celdaObj.AddComponent<TextMeshProUGUI>();
+        t.text = negrita ? $"<b>{texto}</b>" : texto;
+        t.alignment = alig;
+        t.fontSize = negrita ? 18 : 20; // Cambiado de 16 a 20 para el contenido
+        t.color = Color.white;
+        
+        // Copiar fuente del original si existe
+        if (txtContenido != null) {
+            t.font = txtContenido.font;
+            t.fontSharedMaterial = txtContenido.fontSharedMaterial;
         }
     }
 
@@ -263,20 +304,19 @@ public class HistoryManager : MonoBehaviour
         if (tableContainer == null) return;
         
         // Aseguramos que tenga Layout para las filas
-        if (tableContainer.GetComponent<VerticalLayoutGroup>() == null)
-        {
-            VerticalLayoutGroup vlg = tableContainer.gameObject.AddComponent<VerticalLayoutGroup>();
-            vlg.childControlHeight = false;
-            vlg.childForceExpandHeight = false;
-            vlg.childControlWidth = true;
-            vlg.childForceExpandWidth = true;
-            vlg.spacing = 5;
-        }
+        VerticalLayoutGroup vlg = tableContainer.GetComponent<VerticalLayoutGroup>();
+        if (vlg == null) vlg = tableContainer.gameObject.AddComponent<VerticalLayoutGroup>();
+        
+        vlg.childControlHeight = false;
+        vlg.childForceExpandHeight = false;
+        vlg.childControlWidth = true;
+        vlg.childForceExpandWidth = true;
+        vlg.spacing = 5;
+        vlg.padding = new RectOffset(5, 5, 5, 5);
 
         foreach (Transform child in tableContainer)
         {
-            // No destruimos el objeto de mensaje "Contenido"
-            if (child.name != "Contenido")
+            if (child.name != "txtContenido")
                 Destroy(child.gameObject);
         }
     }
