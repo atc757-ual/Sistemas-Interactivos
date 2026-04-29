@@ -131,7 +131,7 @@ GameObject:
   - component: {fileID: 57333834}
   - component: {fileID: 57333833}
   m_Layer: 0
-  m_Name: Text_Meteoro Zigzag
+  m_Name: Text_CarreraOcular
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -176,7 +176,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Lluvia de Meteoritos
+  m_text: Carrera Espacial
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
   m_sharedMaterial: {fileID: 2164040, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
@@ -268,7 +268,7 @@ GameObject:
   - component: {fileID: 133774977}
   - component: {fileID: 133774976}
   m_Layer: 0
-  m_Name: Card_Planeta Circular
+  m_Name: Card_LaberintoEstelar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -347,7 +347,7 @@ GameObject:
   - component: {fileID: 381112695}
   - component: {fileID: 381112694}
   m_Layer: 0
-  m_Name: Text_Cometa Cuadrado
+  m_Name: Text_ExplosionGlobos
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -395,10 +395,12 @@ MonoBehaviour:
   m_text: "Explosi\xF3n Estelar"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
-  m_sharedMaterial: {fileID: 2164040, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
-  m_fontSharedMaterials: []
-  m_fontMaterial: {fileID: 0}
-  m_fontMaterials: []
+  m_sharedMaterial: {fileID: 918846101}
+  m_fontSharedMaterials:
+  - {fileID: 918846101}
+  m_fontMaterial: {fileID: 918846101}
+  m_fontMaterials:
+  - {fileID: 918846101}
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
@@ -814,7 +816,7 @@ GameObject:
   - component: {fileID: 516332921}
   - component: {fileID: 516332920}
   m_Layer: 0
-  m_Name: BtnMeteoroZigZag
+  m_Name: BtnCarreraOcular
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1226,7 +1228,7 @@ GameObject:
   - component: {fileID: 668459414}
   - component: {fileID: 668459413}
   m_Layer: 0
-  m_Name: Card_Cometa Cuadrado
+  m_Name: "Card_Explosi\xF3nEstelar"
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1675,7 +1677,7 @@ GameObject:
   - component: {fileID: 730137117}
   - component: {fileID: 730137116}
   m_Layer: 0
-  m_Name: Text_Sigue el meteoro en zigzag
+  m_Name: Text_Descripcion
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1720,7 +1722,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Esquiva los meteoritos
+  m_text: "Demuestra tu velocidad y precisi\xF3n ocular"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
   m_sharedMaterial: {fileID: 2164040, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
@@ -1891,7 +1893,7 @@ GameObject:
   - component: {fileID: 797823387}
   - component: {fileID: 797823386}
   m_Layer: 0
-  m_Name: Text_Sigue el cometa en forma de cuadrado
+  m_Name: Text_Descripcion
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1936,7 +1938,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Haz explotar las estrellas
+  m_text: Explota todas las naves antes de que escapen
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
   m_sharedMaterial: {fileID: 2164040, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
@@ -2016,6 +2018,115 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 797823384}
   m_CullTransparentMesh: 1
+--- !u!21 &918846101
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Roboto-Bold SDF Material (Instance)
+  m_Shader: {fileID: 4800000, guid: fe393ace9b354375a9cb14cdbbc28be4, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 5
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _BumpMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Cube:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _FaceTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 28204114720316640, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _OutlineTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _Ambient: 0.5
+    - _Bevel: 0.5
+    - _BevelClamp: 0
+    - _BevelOffset: 0
+    - _BevelRoundness: 0
+    - _BevelWidth: 0
+    - _BumpFace: 0
+    - _BumpOutline: 0
+    - _ColorMask: 15
+    - _CullMode: 0
+    - _Diffuse: 0.5
+    - _FaceDilate: 0.1
+    - _FaceUVSpeedX: 0
+    - _FaceUVSpeedY: 0
+    - _GlowInner: 0.05
+    - _GlowOffset: 0
+    - _GlowOuter: 0.05
+    - _GlowPower: 0.75
+    - _GradientScale: 10
+    - _LightAngle: 3.1416
+    - _MaskSoftnessX: 0
+    - _MaskSoftnessY: 0
+    - _OutlineSoftness: 0
+    - _OutlineUVSpeedX: 0
+    - _OutlineUVSpeedY: 0
+    - _OutlineWidth: 0
+    - _PerspectiveFilter: 0.875
+    - _Reflectivity: 10
+    - _ScaleRatioA: 0.9
+    - _ScaleRatioB: 0.73125
+    - _ScaleRatioC: 0.64125
+    - _ScaleX: 1
+    - _ScaleY: 1
+    - _ShaderFlags: 0
+    - _Sharpness: 0
+    - _SpecularPower: 2
+    - _Stencil: 0
+    - _StencilComp: 8
+    - _StencilOp: 0
+    - _StencilReadMask: 255
+    - _StencilWriteMask: 255
+    - _TextureHeight: 1024
+    - _TextureWidth: 1024
+    - _UnderlayDilate: 0
+    - _UnderlayOffsetX: 0
+    - _UnderlayOffsetY: 0
+    - _UnderlaySoftness: 0
+    - _VertexOffsetX: 0
+    - _VertexOffsetY: 0
+    - _WeightBold: 0.75
+    - _WeightNormal: 0
+    m_Colors:
+    - _ClipRect: {r: -32767, g: -32767, b: 32767, a: 32767}
+    - _EnvMatrixRotation: {r: 0, g: 0, b: 0, a: 0}
+    - _FaceColor: {r: 1, g: 1, b: 1, a: 1}
+    - _GlowColor: {r: 0, g: 1, b: 0, a: 0.5}
+    - _MaskCoord: {r: 0, g: 0, b: 32767, a: 32767}
+    - _OutlineColor: {r: 0, g: 0, b: 0, a: 1}
+    - _ReflectFaceColor: {r: 0, g: 0, b: 0, a: 1}
+    - _ReflectOutlineColor: {r: 0, g: 0, b: 0, a: 1}
+    - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
+    - _UnderlayColor: {r: 0, g: 0, b: 0, a: 0.5}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
 --- !u!1 &939567659
 GameObject:
   m_ObjectHideFlags: 0
@@ -2125,7 +2236,7 @@ GameObject:
   - component: {fileID: 960297546}
   - component: {fileID: 960297545}
   m_Layer: 0
-  m_Name: BtnCometaCuadrado
+  m_Name: BtnExplosionGlobos
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2354,10 +2465,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b626ccdb03de0af49b43b287aef04c71, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ActivitiesManager
-  btnMeteoro: {fileID: 0}
-  btnCometa: {fileID: 0}
-  btnEstrella: {fileID: 0}
   btnLaberinto: {fileID: 0}
+  btnCarrera: {fileID: 0}
+  btnExplosion: {fileID: 0}
   btnVolver: {fileID: 0}
 --- !u!1 &1065085220
 GameObject:
@@ -2450,7 +2560,7 @@ GameObject:
   - component: {fileID: 1188807308}
   - component: {fileID: 1188807307}
   m_Layer: 0
-  m_Name: Text_Planeta Circular
+  m_Name: Text_LaberintoVisual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2587,7 +2697,7 @@ GameObject:
   - component: {fileID: 1250374842}
   - component: {fileID: 1250374841}
   m_Layer: 0
-  m_Name: "Text_Sigue el planeta en c\xEDrculos"
+  m_Name: Text_Descripcion
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2632,7 +2742,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Encuentra la salida
+  m_text: Encuentra la salida del laberinto estelar
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
   m_sharedMaterial: {fileID: 2164040, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
@@ -2821,7 +2931,7 @@ GameObject:
   - component: {fileID: 1331093475}
   - component: {fileID: 1331093474}
   m_Layer: 0
-  m_Name: BtnLaberintoEstelar
+  m_Name: BtnLaberintoVisual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3625,7 +3735,7 @@ GameObject:
   - component: {fileID: 2045169304}
   - component: {fileID: 2045169303}
   m_Layer: 0
-  m_Name: Card_Meteoro Zigzag
+  m_Name: Card_CarreraOcular
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

@@ -55,8 +55,7 @@ public class HomeManager : MonoBehaviour
 
     void Start()
     {
-        string nombre = (GestorPaciente.Instance != null && GestorPaciente.Instance.pacienteActual != null) 
-                        ? GestorPaciente.Instance.pacienteActual.nombre : "Astronauta";
+        string nombre = GestorPaciente.Instance != null ? GestorPaciente.Instance.GetNombrePacienteFormateado() : "Astronauta";
         
         if (textoBienvenida != null) textoBienvenida.text = $"¡Hola, {nombre}!";
 

@@ -22,6 +22,7 @@ public class Partida
     public bool exito;      // Nueva: si llegó al final
     public float tiempoJuego; // Nueva: en segundos
     public int nivel;       // NUEVO: Nivel alcanzado (1, 2, 3...)
+    public int errores;     // NUEVO: Cantidad de fallos/colisiones
     public string fecha;
 }
 
@@ -37,7 +38,7 @@ public class GestorPaciente : MonoBehaviour
                 // Auto-creation if not found in scene
                 GameObject go = new GameObject("GestorPaciente_AutoCreated");
                 _instance = go.AddComponent<GestorPaciente>();
-                DontDestroyOnLoad(go);
+                if (Application.isPlaying) DontDestroyOnLoad(go);
             }
             return _instance;
         }
@@ -125,7 +126,7 @@ public class GestorPaciente : MonoBehaviour
         GuardarTodosLosDatos();
     }
 
-    public void GuardarPartida(string nombreJuego, int puntuacion, int nivel, float precision = 0, bool exito = false, float tiempo = 0)
+    public void GuardarPartida(string nombreJuego, int puntuacion, int nivel, float precision = 0, bool exito = false, float tiempo = 0, int errores = 0)
     {
         if (pacienteActual == null) return;
 
@@ -137,6 +138,7 @@ public class GestorPaciente : MonoBehaviour
             exito = exito,
             tiempoJuego = tiempo,
             nivel = nivel,
+            errores = errores,
             fecha = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
         };
 
@@ -178,16 +180,32 @@ public class GestorPaciente : MonoBehaviour
         Debug.Log($"Datos guardados en: {rutaArchivo}");
     }
 
+    public string GetNombrePacienteFormateado()
+    {
+        if (pacienteActual == null || string.IsNullOrWhiteSpace(pacienteActual.nombre)) return "Astronauta";
+        return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(pacienteActual.nombre.ToLower());
+    }
+
     private void CargarTodosLosPacientes()
     {
+        Debug.Log("[GestorPaciente] Intentando cargar desde: " + rutaArchivo);
         if (File.Exists(rutaArchivo))
         {
             string json = File.ReadAllText(rutaArchivo);
+            Debug.Log("[GestorPaciente] JSON leído: " + json.Length + " caracteres.");
             Wrapper<List<DatosPaciente>> wrapper = JsonUtility.FromJson<Wrapper<List<DatosPaciente>>>(json);
             if (wrapper != null && wrapper.items != null)
             {
                 listaPacientes = wrapper.items;
+                Debug.Log("[GestorPaciente] Pacientes cargados: " + listaPacientes.Count);
             }
+            else {
+                Debug.LogWarning("[GestorPaciente] Wrapper o items nulos tras deserializar.");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[GestorPaciente] No se encontró el archivo de datos.");
         }
     }
 

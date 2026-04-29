@@ -132,8 +132,7 @@ public class EstrellaLinealManager : BaseActividad
         if (instObj != null) {
             TMP_Text instText = instObj.GetComponent<TMP_Text>();
             if (instText != null && instText.text.Contains("Astronauta")) {
-                string nombre = (GestorPaciente.Instance != null && GestorPaciente.Instance.pacienteActual != null) 
-                                ? GestorPaciente.Instance.pacienteActual.nombre : "Astronauta";
+                string nombre = GestorPaciente.Instance != null ? GestorPaciente.Instance.GetNombrePacienteFormateado() : "Astronauta";
                 instText.text = instText.text.Replace("Astronauta", nombre);
             }
         }
@@ -314,7 +313,7 @@ public class EstrellaLinealManager : BaseActividad
         this.puntuacion = Mathf.FloorToInt(avanceFinal * 10);
         if (GestorPaciente.Instance != null)
         {
-            GestorPaciente.Instance.GuardarPartida("Estrella Lineal", this.puntuacion, nivelAlcanzado, precisionFinal, true, _tiempoTranscurrido);
+            GestorPaciente.Instance.GuardarPartida("Estrella Lineal", this.puntuacion, nivelAlcanzado, precisionFinal, true, _tiempoTranscurrido, 0);
         }
         // ---------------------------------------------------
 

@@ -290,7 +290,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 471}
+  m_AnchoredPosition: {x: 0, y: 473}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &43781648
@@ -2630,7 +2630,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1346609534
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2890,7 +2890,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_text: "Esta misi\xF3n consiste en explotar naves alienigena en orden n\xFAmerico
-    puedes fallar, pero ten cuidado porque es limitado."
+    puedes fallar, pero ten cuidado porque s\xF3lo puedes fallar 3 veces."
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 0cd24b7fbce9b024bb19293e7a1fcf18, type: 2}
   m_sharedMaterial: {fileID: -298057856966903309, guid: 0cd24b7fbce9b024bb19293e7a1fcf18, type: 2}
@@ -3151,25 +3151,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8e21e9257a510184daa435351baa0292, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ExplosionGlobosManager
-  cantidadGlobos: 5
-  tiempoLimiteSegundos: 60
-  penalizacionSegundos: 5
+  cantidadItems: 5
+  tiempoSesion: 60
+  maxVidas: 3
   useEyeTracking: 1
+  overlayInicio: {fileID: 0}
+  overlayFinal: {fileID: 0}
+  playerCursor: {fileID: 0}
+  itemTemplate: {fileID: 0}
   container: {fileID: 0}
-  balloonPrefab: {fileID: 0}
-  pInicio: {fileID: 0}
-  pCountdown: {fileID: 0}
-  pGame: {fileID: 0}
-  pResults: {fileID: 0}
-  gCursor: {fileID: 0}
-  bStart: {fileID: 0}
-  tCountdown: {fileID: 0}
-  tTimer: {fileID: 0}
-  tInstruccion: {fileID: 0}
-  tScore: {fileID: 0}
-  fPrecision: {fileID: 0}
-  fVelocidad: {fileID: 0}
-  fConsistencia: {fileID: 0}
+  timerText: {fileID: 0}
+  fallosText: {fileID: 0}
+  textoContador: {fileID: 0}
+  counterRetry: {fileID: 0}
+  finalScoreText: {fileID: 0}
+  finalErrorsText: {fileID: 0}
+  finalTimeText: {fileID: 0}
+  volverBtn: {fileID: 0}
+  startBtn: {fileID: 0}
+  retryBtn: {fileID: 0}
+  flashDano: {fileID: 0}
 --- !u!1 &1484324636
 GameObject:
   m_ObjectHideFlags: 0
@@ -3764,7 +3765,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 2, y: 0}
+  m_AnchoredPosition: {x: 2, y: -621}
   m_SizeDelta: {x: 60, y: 60}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1698306556

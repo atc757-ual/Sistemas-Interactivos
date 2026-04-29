@@ -178,7 +178,7 @@ public abstract class BaseActividad : MonoBehaviour
     {
         if (GestorPaciente.Instance != null)
         {
-            GestorPaciente.Instance.GuardarPartida(nombreJuego, puntuacion, nivel, precision, exito, tiempoTotal);
+            GestorPaciente.Instance.GuardarPartida(nombreJuego, puntuacion, nivel, precision, exito, tiempoTotal, 0);
         }
         Time.timeScale = 1;
         SceneManager.LoadScene("History");

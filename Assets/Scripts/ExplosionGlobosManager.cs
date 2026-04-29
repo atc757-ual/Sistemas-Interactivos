@@ -31,6 +31,8 @@ public class ExplosionGlobosManager : MonoBehaviour
     [SerializeField] TMP_Text finalScoreText;    // OverlayMetricaScore
     [SerializeField] TMP_Text finalErrorsText;   // OverlayMetricaErrores
     [SerializeField] TMP_Text finalTimeText;     // OverlayMetricaTiempo
+    [SerializeField] TMP_Text finalResultText;   // OverlayResult
+    [SerializeField] TMP_Text finalMessageText;  // OverlayMessage
     [SerializeField] Button volverBtn;
     [SerializeField] Button startBtn;
     [SerializeField] Button retryBtn; 
@@ -88,6 +90,8 @@ public class ExplosionGlobosManager : MonoBehaviour
                 if (finalScoreText == null) finalScoreText = FindInChildRecursive(overlayFinal.transform, "OverlayMetricaScore")?.GetComponent<TMP_Text>();
                 if (finalErrorsText == null) finalErrorsText = FindInChildRecursive(overlayFinal.transform, "OverlayMetricaErrores")?.GetComponent<TMP_Text>();
                 if (finalTimeText == null) finalTimeText = FindInChildRecursive(overlayFinal.transform, "OverlayMetricaTiempo")?.GetComponent<TMP_Text>();
+                if (finalResultText == null) finalResultText = FindInChildRecursive(overlayFinal.transform, "OverlayResult")?.GetComponent<TMP_Text>();
+                if (finalMessageText == null) finalMessageText = FindInChildRecursive(overlayFinal.transform, "OverlayMessage")?.GetComponent<TMP_Text>();
             }
         }
 
@@ -304,29 +308,64 @@ public class ExplosionGlobosManager : MonoBehaviour
     {
         _timerRunning = false;
         float elapsed = Time.time - _startTime;
-        
-        // PUNTUACIÓN PROFESIONAL:
-        // Si termina en 10s o menos -> 100 puntos base.
-        // Si tarda más, el puntaje base baja hacia 50 de forma lineal hasta agotar el tiempo.
-        float scoreBase = 100f;
-        if (elapsed > 10f) {
-            scoreBase = Mathf.Lerp(100f, 50f, (elapsed - 10f) / (tiempoSesion - 10f));
+        float scoreFinal = 0f;
+        string resultTitle = "";
+        string resultMsg = "";
+
+        if (!success) 
+        {
+            scoreFinal = Mathf.Max(0, 30f - (_errors * 5f));
+            resultTitle = "¡Misión Fallida!";
+            if (_vidasRestantes <= 0)
+                resultMsg = "Cometiste demasiados errores. La precisión es clave, ¡concéntrate y vuelve a intentarlo!";
+            else
+                resultMsg = "Se agotó el tiempo. ¡Debes ser más rápido en la próxima misión!";
         }
-        
-        // Penalización por errores (10 puntos cada uno)
-        float scoreFinal = scoreBase - (_errors * 10f);
-        if (!success) scoreFinal *= 0.5f; // Penalización por no terminar o perder vidas
+        else 
+        {
+            if (elapsed <= 15f) 
+            {
+                if (_errors == 0) 
+                {
+                    scoreFinal = 100f;
+                    resultTitle = "¡Perfección Galáctica!";
+                    resultMsg = "¡Impresionante! Destruiste todas las naves en tiempo récord y sin un solo fallo.";
+                }
+                else 
+                {
+                    scoreFinal = Mathf.Max(60f, 100f - (_errors * 15f));
+                    resultTitle = "¡Misión Cumplida!";
+                    resultMsg = "Fuiste increíblemente rápido, pero cometiste algunos errores. ¡Casi perfecto!";
+                }
+            }
+            else 
+            {
+                float timePenalty = Mathf.Lerp(0f, 50f, (elapsed - 15f) / (tiempoSesion - 15f));
+                scoreFinal = 90f - timePenalty - (_errors * 10f);
+                scoreFinal = Mathf.Max(40f, scoreFinal); 
+                
+                resultTitle = "¡Buen Trabajo!";
+                resultMsg = "Has logrado despejar el sector. Entrena tus reflejos para mejorar tu tiempo en el próximo intento.";
+            }
+        }
         
         scoreFinal = Mathf.Clamp(scoreFinal, 0, 100);
 
         if (GestorPaciente.Instance != null)
-            GestorPaciente.Instance.GuardarPartida("Globos", Mathf.RoundToInt(scoreFinal), 1, (_itemsPopped / (float)Mathf.Max(1, _itemsPopped + _errors)) * 100f, success, elapsed);
+            GestorPaciente.Instance.GuardarPartida("Globos", Mathf.RoundToInt(scoreFinal), 1, (_itemsPopped / (float)Mathf.Max(1, _itemsPopped + _errors)) * 100f, success, elapsed, _errors);
 
         if (finalScoreText) finalScoreText.text = Mathf.RoundToInt(scoreFinal).ToString();
         if (finalErrorsText) finalErrorsText.text = _errors.ToString();
         if (finalTimeText) finalTimeText.text = elapsed.ToString("F1") + "s";
+        
+        if (finalResultText) finalResultText.text = resultTitle;
+        if (finalMessageText) finalMessageText.text = resultMsg;
 
         SetState(GameState.Results);
+        if (scoreFinal >= 100f && retryBtn != null) 
+        {
+            retryBtn.gameObject.SetActive(false);
+        }
         ClearItems();
     }
 

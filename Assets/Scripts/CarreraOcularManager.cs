@@ -618,7 +618,7 @@ public class CarreraOcularManager : BaseActividad
         // Guardar métricas
         if (GestorPaciente.Instance != null)
         {
-            GestorPaciente.Instance.GuardarPartida("Carrera Ocular", finalScore, 1, 100, true, _tiempoTranscurrido);
+            GestorPaciente.Instance.GuardarPartida("Carrera Ocular", finalScore, 1, 100, true, _tiempoTranscurrido, _colisiones);
         }
     }
 

@@ -93,12 +93,9 @@ public class LaberintoManager : BaseActividad
         _nodosValidados.Add(new Vector2Int(0, 1)); 
         
         // Personalizar nombre del paciente
-        if (textBienvenida != null && GestorPaciente.Instance != null && GestorPaciente.Instance.pacienteActual != null) {
-            string nombre = GestorPaciente.Instance.pacienteActual.nombre;
-            if (!string.IsNullOrEmpty(nombre)) {
-                nombre = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(nombre.ToLower());
-                textBienvenida.text = "¡HOLA, " + nombre + "!";
-            }
+        if (textBienvenida != null && GestorPaciente.Instance != null) {
+            string nombre = GestorPaciente.Instance.GetNombrePacienteFormateado();
+            textBienvenida.text = "¡HOLA, " + nombre + "!";
         }
         
         ReiniciarPosicion();
@@ -628,7 +625,7 @@ public class LaberintoManager : BaseActividad
         
         if (GestorPaciente.Instance != null) {
             int puntos = Mathf.FloorToInt((_nodosValidados.Count / (float)(_generador.columnas * _generador.filas)) * 100);
-            GestorPaciente.Instance.GuardarPartida("Laberinto", puntos, 1, 0, false, tiempoLimite);
+            GestorPaciente.Instance.GuardarPartida("Laberinto", puntos, 1, 0, false, tiempoLimite, _conteoErrores);
         }
 
         ConfigurarVisibilidad(inicio: false, juego: false, final: true);
@@ -643,7 +640,7 @@ public class LaberintoManager : BaseActividad
         
         float tiempoUsado = tiempoLimite - _tiempoRestante;
         if (GestorPaciente.Instance != null) {
-            GestorPaciente.Instance.GuardarPartida("Laberinto", 100, 1, 100, true, tiempoUsado);
+            GestorPaciente.Instance.GuardarPartida("Laberinto", 100, 1, 100, true, tiempoUsado, _conteoErrores);
         }
 
         ConfigurarVisibilidad(inicio: false, juego: false, final: true);

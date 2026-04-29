@@ -426,7 +426,7 @@ public class Calibracion : MonoBehaviour
         if (GestorPaciente.Instance != null)
         {
              float tiempoTotal = Time.time - tiempoInicioActividad;
-             GestorPaciente.Instance.GuardarPartida("Calibración", 100, 1, precisionActual, precisionActual >= 75, tiempoTotal);
+             GestorPaciente.Instance.GuardarPartida("Calibración", 100, 1, precisionActual, precisionActual >= 75, tiempoTotal, 0);
         }
     }
 
