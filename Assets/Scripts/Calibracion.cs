@@ -54,6 +54,7 @@ public class Calibracion : MonoBehaviour
     }
     private PuntoMapeado[] mapaPuntos;
     private float precisionActual = 0f;
+    private bool _inCalibrationMode = false;
 
     void Awake()
     {
@@ -294,15 +295,7 @@ public class Calibracion : MonoBehaviour
                 BarajarPuntos(); 
                 ConfigurarInterfazCalibracion(activa: true);
                 
-                try { 
-                    var safetyThread = new CalibrationThread(EyeTracker.Instance.EyeTrackerInterface, true);
-                    var leaveReq = safetyThread.LeaveCalibrationMode();
-                    var sw = System.Diagnostics.Stopwatch.StartNew();
-                    while (!leaveReq.Ready && sw.ElapsedMilliseconds < 800) {
-                        System.Threading.Thread.Sleep(5);
-                    }
-                    safetyThread.StopThread();
-                } catch { }
+                // Eliminamos el safetyThread redundante que causaba el warning SeCalibrationNotStarted
 
                 var calibrationThread = new CalibrationThread(EyeTracker.Instance.EyeTrackerInterface, true);
                 
@@ -323,6 +316,7 @@ public class Calibracion : MonoBehaviour
         try 
         {
             thread.EnterCalibrationMode();
+            _inCalibrationMode = true;
             
             if (puntoCalibracion != null) puntoCalibracion.gameObject.SetActive(true);
             for (int i = 0; i < mapaPuntos.Length; i++)
@@ -353,6 +347,7 @@ public class Calibracion : MonoBehaviour
         }
         finally 
         {
+            _inCalibrationMode = false;
             var leaveReq = thread.LeaveCalibrationMode();
             var sw = System.Diagnostics.Stopwatch.StartNew();
             // Esperamos síncronamente (spin wait) un instante para asegurar que
@@ -565,19 +560,15 @@ public class Calibracion : MonoBehaviour
 
     void OnDestroy()
     {
-        try 
+        // Solo intentamos salir si sabemos que entramos y no hemos salido
+        if (_inCalibrationMode && EyeTracker.Instance != null && EyeTracker.Instance.EyeTrackerInterface != null) 
         {
-            if (EyeTracker.Instance != null && EyeTracker.Instance.EyeTrackerInterface != null) 
-            {
+            try {
                 var safeThread = new CalibrationThread(EyeTracker.Instance.EyeTrackerInterface, true);
-                var leaveReq = safeThread.LeaveCalibrationMode();
-                var sw = System.Diagnostics.Stopwatch.StartNew();
-                while (!leaveReq.Ready && sw.ElapsedMilliseconds < 800) {
-                    System.Threading.Thread.Sleep(5);
-                }
+                safeThread.LeaveCalibrationMode();
                 safeThread.StopThread();
-            }
-        } catch { }
+            } catch { }
+        }
     }
 
     public void Volver() { SceneManager.LoadScene("Home"); }

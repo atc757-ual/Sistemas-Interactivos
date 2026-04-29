@@ -52,8 +52,9 @@ public class EstrellaLinealManager : BaseActividad
     private List<RectTransform> _bgSegments = new List<RectTransform>(); // <--- Cache de segmentos de fondo
 
     // Control de parpadeo para iniciar
-    private float _tiempoOjosCerrados = 0f;
-    private bool _ojosEstablesParaIniciar = false;
+    // Control de parpadeo (estandarizado)
+    private float _blinkTimer = 0f;
+    private bool _eyesWereDetected = false;
     private bool _enConteo = false;
     private float _tiempoInstruccionesMostradas = 0f;
     private int _dirEstrella = 1; // 1 = derecha, -1 = izquierda
@@ -250,13 +251,16 @@ public class EstrellaLinealManager : BaseActividad
         if (!juegoIniciado && botonIniciar != null) botonIniciar.interactable = true;
 
         base.Update();
-        if (_juegoFinalizado) return;
+        if (_juegoFinalizado)
+        {
+            if (!juegoPausado) ManejarReintentoPorParpadeo();
+            return;
+        }
 
-        // Scroll de fondo SIEMPRE para que la escena se sienta viva
         // Desplazar fondo SIEMPRE para que la escena se sienta viva
         DesplazarFondo();
 
-        if (!juegoIniciado && !juegoPausado && !_enConteo) { ManejarPestañeoInicio(); return; }
+        if (!juegoIniciado && !juegoPausado && !_enConteo) { ManejarInstruccionesYParpadeo(); return; }
 
         if (juegoIniciado && !juegoPausado)
         {
@@ -342,56 +346,110 @@ public class EstrellaLinealManager : BaseActividad
         }
     }
 
+    void ManejarInstruccionesYParpadeo()
+    {
+        bool eyesDetected = TobiiGazeProvider.Instance != null && TobiiGazeProvider.Instance.EyeDataValid;
+
+        if (overlayInicio != null && textoSub != null)
+        {
+            if (textoSub.gameObject.activeSelf != eyesDetected) {
+                // El textoSub suele estar siempre activo en este diseño, pero nos aseguramos
+                textoSub.gameObject.SetActive(true);
+            }
+            
+            if (eyesDetected) {
+                SetOverlayText(textoSub.gameObject, "¡TE VEO! <b>Pestañea</b> ahora para iniciar");
+            } else {
+                SetOverlayText(textoSub.gameObject, "Buscando ojos... (Ponte a ~60cm)");
+            }
+        }
+
+        // Mostrar botón si detectamos ojos o si ha pasado el tiempo de lectura
+        _tiempoInstruccionesMostradas += Time.deltaTime;
+        if (botonIniciar != null) {
+            bool mostrarBoton = eyesDetected || _tiempoInstruccionesMostradas > 5.0f;
+            if (botonIniciar.gameObject.activeSelf != mostrarBoton) botonIniciar.gameObject.SetActive(mostrarBoton);
+            botonIniciar.interactable = true;
+        }
+
+        if (!eyesDetected)
+        {
+            if (_eyesWereDetected) _blinkTimer += Time.deltaTime;
+        }
+        else
+        {
+            if (_eyesWereDetected && _blinkTimer > 0.1f && _blinkTimer < 0.5f)
+            {
+                _eyesWereDetected = false;
+                _blinkTimer = 0;
+                Debug.Log("<color=magenta><b>[ESTRELLA]</b> Pestañeo detectado. Iniciando...</color>");
+                IniciarJuego();
+            }
+            else
+            {
+                _eyesWereDetected = true;
+                _blinkTimer = 0;
+            }
+        }
+    }
+
+    void ManejarReintentoPorParpadeo()
+    {
+        bool eyesDetected = TobiiGazeProvider.Instance != null && TobiiGazeProvider.Instance.EyeDataValid;
+
+        if (overlayResult != null && subRes != null)
+        {
+            if (eyesDetected) {
+                SetOverlayText(subRes.gameObject, "<b>¡Hemos detectado tus ojos!</b>\n\nPestañea para reintentar la misión.");
+            }
+        }
+
+        if (!eyesDetected)
+        {
+            if (_eyesWereDetected) _blinkTimer += Time.deltaTime;
+        }
+        else
+        {
+            if (_eyesWereDetected && _blinkTimer > 0.1f && _blinkTimer < 0.5f)
+            {
+                _eyesWereDetected = false;
+                _blinkTimer = 0;
+                
+                SetOverlayText(subRes.gameObject, "<b>¡Pestañeo detectado!</b>\n\nReiniciando misión...");
+                
+                // Reiniciar cargando la escena de nuevo (como hace el botón BtnAgain)
+                Invoke("ReiniciarEscena", 0.5f);
+            }
+            else
+            {
+                _eyesWereDetected = true;
+                _blinkTimer = 0;
+            }
+        }
+    }
+
+    void ReiniciarEscena()
+    {
+        Time.timeScale = 1.0f;
+        string nombreEscena = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        UnityEngine.SceneManagement.SceneManager.LoadScene(nombreEscena);
+    }
+
+    void SetOverlayText(GameObject obj, string message)
+    {
+        if (obj == null) return;
+        var tmp = obj.GetComponent<TMP_Text>();
+        if (tmp == null) tmp = obj.GetComponentInChildren<TMP_Text>();
+        
+        if (tmp != null) {
+            tmp.richText = true;
+            tmp.text = message;
+        }
+    }
+
     void ManejarPestañeoInicio()
     {
-        // 1. FALLBACK: Asegurar que el botón SIEMPRE se pueda pulsar (ratón)
-        if (botonIniciar != null) botonIniciar.interactable = true;
-
-        // 2. DELAY LECTURA: Dejar el texto original de la misión unos segundos
-        _tiempoInstruccionesMostradas += Time.deltaTime;
-        if (_tiempoInstruccionesMostradas < 5.0f) {
-            // Mantener el botón oculto mientras se leen las instrucciones
-            if (botonIniciar != null && botonIniciar.gameObject.activeSelf) botonIniciar.gameObject.SetActive(false);
-            return; // Esperar a que lean la instrucción antes de buscar ojos
-        }
-
-        // Mostrar el botón en el momento en que empezamos a buscar los ojos
-        if (botonIniciar != null && !botonIniciar.gameObject.activeSelf) botonIniciar.gameObject.SetActive(true);
-
-        var gaze = EyeTracker.Instance.LatestGazeData;
-        // Usamos GazePointValid que es lo que usa la calibración oficial
-        bool detectado = gaze != null && (gaze.Left.GazePointValid || gaze.Right.GazePointValid);
-        if (detectado)
-        {
-            _tiempoOjosCerrados = 0f;
-            // Los datos de Tobii Pro vienen en mm. Dividimos por 10 para tener cm.
-            float distL = gaze.Left.GazeOriginInUserCoordinates.z / 10f;
-            float distR = gaze.Right.GazeOriginInUserCoordinates.z / 10f;
-            float distMedia = (distL + distR) / 2f;
-            
-            // Rango de éxito: entre 40cm y 90cm
-            _ojosEstablesParaIniciar = (distMedia >= 35 && distMedia <= 95);
-            
-            if (_ojosEstablesParaIniciar) {
-                // Debug.Log("<color=cyan><b>[TOBII]</b> Ojos detectados a " + distMedia.ToString("F0") + " cm. ¡PUEDES PESTAÑEAR!</color>");
-            }
-        }
-        else if (_ojosEstablesParaIniciar)
-        {
-            _tiempoOjosCerrados += Time.deltaTime;
-            if (_tiempoOjosCerrados >= 0.10f && _tiempoOjosCerrados <= 0.70f) 
-            { 
-                Debug.Log("<color=green><b>[TOBII]</b> Pestañeo detectado. Iniciando actividad...</color>");
-                IniciarJuego(); 
-                _ojosEstablesParaIniciar = false; 
-            }
-        }
-
-        if (textoSub != null)
-        {
-            textoSub.text = _ojosEstablesParaIniciar ? "¡TE VEO! <b>Pestañea</b> ahora" : "Buscando ojos... (Ponte a ~60cm)";
-            textoSub.color = _ojosEstablesParaIniciar ? Color.cyan : Color.white;
-        }
+        ManejarInstruccionesYParpadeo();
     }
 
     void ActualizarUI()

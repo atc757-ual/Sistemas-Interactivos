@@ -67,9 +67,9 @@ public class LaberintoManager : BaseActividad
     private bool _esperandoInicioPosicion = false;
     private bool _enCuentaRegresiva = false;
 
-    // Control de parpadeo (estilo Estrella Lineal)
-    private float _tiempoOjosCerrados = 0f;
-    private bool _ojosEstablesParaIniciar = false;
+    // Control de parpadeo (estandarizado)
+    private float _blinkTimer = 0f;
+    private bool _eyesWereDetected = false;
 
     protected override void Start()
     {
@@ -381,11 +381,16 @@ public class LaberintoManager : BaseActividad
     protected override void Update()
     {
         base.Update();
-        if (_enMeta || juegoPausado) return;
+        if (_enMeta)
+        {
+            if (!juegoPausado) ManejarReintentoPorParpadeo();
+            return;
+        }
+        if (juegoPausado) return;
 
         // FASE 0: Antes de siquiera estar en el modo "Llevar al START", buscamos los ojos
         if (!juegoIniciado && !_esperandoInicioPosicion && !_enCuentaRegresiva) {
-            ManejarInstrucciones();
+            ManejarInstruccionesYParpadeo();
             return;
         }
 
@@ -488,53 +493,105 @@ public class LaberintoManager : BaseActividad
         }
     }
 
+    void ManejarInstruccionesYParpadeo()
+    {
+        bool eyesDetected = TobiiGazeProvider.Instance != null && TobiiGazeProvider.Instance.EyeDataValid;
+
+        // 1. Mostrar instrucciones solo si se detectan ojos (OverlayInicio o OverlayInstructions)
+        if (overlayInstructions != null)
+        {
+            if (overlayInstructions.activeSelf != eyesDetected) {
+                overlayInstructions.SetActive(eyesDetected);
+                if (eyesDetected) SetOverlayText(overlayInstructions, "<b>¡Hemos detectado tus ojos!</b>\n\nPestañea o haz clic en el botón inferior para iniciar la aventura.");
+            }
+        }
+        else if (overlayInicio != null)
+        {
+             // Si no hay overlay de instrucciones separado, usamos el de inicio
+             // (Aunque en este script suelen estar mapeados)
+        }
+
+        // 2. Lógica de parpadeo
+        if (!eyesDetected)
+        {
+            if (_eyesWereDetected) _blinkTimer += Time.deltaTime;
+        }
+        else
+        {
+            // Si recuperamos los ojos después de un breve lapso (parpadeo)
+            if (_eyesWereDetected && _blinkTimer > 0.1f && _blinkTimer < 0.5f)
+            {
+                _eyesWereDetected = false;
+                _blinkTimer = 0;
+                Debug.Log("<color=magenta><b>[LABERINTO]</b> Pestañeo detectado. Iniciando...</color>");
+                
+                if (overlayInstructions != null) overlayInstructions.SetActive(false);
+                IniciarJuego();
+            }
+            else
+            {
+                _eyesWereDetected = true;
+                _blinkTimer = 0;
+            }
+        }
+    }
+
+    void ManejarReintentoPorParpadeo()
+    {
+        bool eyesDetected = TobiiGazeProvider.Instance != null && TobiiGazeProvider.Instance.EyeDataValid;
+
+        // Mostramos feedback en OverlayRetry si existe, o en OverlayFinal
+        GameObject targetOverlay = overlayRetry != null ? overlayRetry : overlayFinal;
+
+        if (targetOverlay != null)
+        {
+            if (targetOverlay == overlayRetry && targetOverlay.activeSelf != eyesDetected) {
+                targetOverlay.SetActive(eyesDetected);
+            }
+            
+            if (eyesDetected) {
+                SetOverlayText(targetOverlay, "<b>¡Hemos detectado tus ojos!</b>\n\nPestañea para reintentar la misión.");
+            }
+        }
+
+        if (!eyesDetected)
+        {
+            if (_eyesWereDetected) _blinkTimer += Time.deltaTime;
+        }
+        else
+        {
+            if (_eyesWereDetected && _blinkTimer > 0.1f && _blinkTimer < 0.5f)
+            {
+                _eyesWereDetected = false;
+                _blinkTimer = 0;
+                
+                // Mostrar mensaje de confirmación
+                SetOverlayText(targetOverlay, "<b>¡Pestañeo detectado!</b>\n\nReiniciando misión...");
+                
+                Invoke("ReiniciarJuego", 0.5f);
+            }
+            else
+            {
+                _eyesWereDetected = true;
+                _blinkTimer = 0;
+            }
+        }
+    }
+
+    void SetOverlayText(GameObject overlay, string message)
+    {
+        if (overlay == null) return;
+        var tmp = overlay.GetComponentInChildren<TMP_Text>();
+        if (tmp != null) {
+            tmp.richText = true;
+            tmp.text = message;
+        }
+    }
+
     void ManejarInstrucciones()
     {
-        bool tobiiDisponible = (TobiiGazeProvider.Instance != null);
-
-        if (usarValidacionOjos && tobiiDisponible) {
-            bool ojosDetectados = TobiiGazeProvider.Instance.HasGaze;
-
-            // 1. El mensaje (OverlayInstructions) SOLO aparece si se detectan los ojos
-            if (overlayInstructions != null) {
-                if (overlayInstructions.activeSelf != ojosDetectados) {
-                    overlayInstructions.SetActive(ojosDetectados);
-                }
-            }
-
-            // 2. El botón SIEMPRE visible para permitir inicio manual (Mouse) si falla Tobii
-            if (botonIniciar != null) {
-                if (!botonIniciar.gameObject.activeSelf) {
-                    botonIniciar.gameObject.SetActive(true);
-                }
-                // Si queremos ser estrictos con la terapia, podríamos desactivar la interactividad,
-                // pero para evitar bloqueos lo dejaremos siempre interactuable.
-                botonIniciar.interactable = true;
-            }
-
-            // Lógica de parpadeo (se mantiene porque es interna)
-            if (ojosDetectados) {
-                _tiempoOjosCerrados = 0f;
-                _ojosEstablesParaIniciar = true;
-            } 
-            else if (_ojosEstablesParaIniciar) {
-                _tiempoOjosCerrados += Time.deltaTime;
-                if (_tiempoOjosCerrados >= 0.10f && _tiempoOjosCerrados <= 0.70f) {
-                    _ojosEstablesParaIniciar = false;
-                    IniciarJuego();
-                }
-            }
-        } else {
-            // MODO FALLBACK (Sin Tobii o desactivado)
-            if (botonIniciar != null) {
-                botonIniciar.gameObject.SetActive(true);
-                botonIniciar.interactable = true;
-            }
-            if (overlayInstructions != null) overlayInstructions.SetActive(false); // Oculto por defecto
-            
-            // ¡CLAVE! Le decimos a la clase padre que deje de bloquear el botón
-            usarValidacionOjos = false;
-        }
+        // Obsolote: reemplazado por ManejarInstruccionesYParpadeo
+        ManejarInstruccionesYParpadeo();
     }
 
     void ManejarMovimientoCursor()
@@ -576,16 +633,19 @@ public class LaberintoManager : BaseActividad
     }
 
     private int _indiceValidadoActual = 0; // Índice de la última casilla del camino feliz validada
+    // GC-safe cache para el raycast (evita new() en cada frame)
+    private PointerEventData _cachedPointerEvent;
+    private List<RaycastResult> _cachedRaycastResults = new List<RaycastResult>();
 
     void ChequearColisiones()
     {
-        PointerEventData eventData = new PointerEventData(EventSystem.current);
-        eventData.position = playerCursor.position;
-        List<RaycastResult> results = new List<RaycastResult>();
+        if (_cachedPointerEvent == null) _cachedPointerEvent = new PointerEventData(EventSystem.current);
+        _cachedPointerEvent.position = playerCursor.position;
+        _cachedRaycastResults.Clear();
         
         if (EventSystem.current != null) {
-            EventSystem.current.RaycastAll(eventData, results);
-            foreach (var r in results) {
+            EventSystem.current.RaycastAll(_cachedPointerEvent, _cachedRaycastResults);
+            foreach (var r in _cachedRaycastResults) {
                 if (r.gameObject.name.Contains("Path")) {
                     Vector2Int coords = EncontrarCoordenadas(r.gameObject);
                     if (coords.x != -1) {
@@ -650,7 +710,7 @@ public class LaberintoManager : BaseActividad
         
         if (GestorPaciente.Instance != null) {
             int puntos = Mathf.FloorToInt((_nodosValidados.Count / (float)(_generador.columnas * _generador.filas)) * 100);
-            GestorPaciente.Instance.GuardarPartida("Laberinto", puntos, 1, 0, false, tiempoLimite, _conteoErrores);
+            GestorPaciente.Instance.GuardarPartida("Laberinto Estelar", puntos, 1, 0, false, tiempoLimite, _conteoErrores);
         }
 
         ConfigurarVisibilidad(inicio: false, juego: false, final: true);
@@ -665,7 +725,7 @@ public class LaberintoManager : BaseActividad
         
         float tiempoUsado = tiempoLimite - _tiempoRestante;
         if (GestorPaciente.Instance != null) {
-            GestorPaciente.Instance.GuardarPartida("Laberinto", 100, 1, 100, true, tiempoUsado, _conteoErrores);
+            GestorPaciente.Instance.GuardarPartida("Laberinto Estelar", 100, 1, 100, true, tiempoUsado, _conteoErrores);
         }
 
         ConfigurarVisibilidad(inicio: false, juego: false, final: true);

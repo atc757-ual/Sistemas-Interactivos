@@ -1048,14 +1048,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.5, g: 0.5, b: 0.5, a: 0.9019608}
+  m_Color: {r: 1, g: 1, b: 1, a: 0.9019608}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -6317469483029177188, guid: 94af7b40f2d50a34897a5d993c800eb2, type: 3}
+  m_Sprite: {fileID: 7565579387455682551, guid: 5c4c8e9398260db4796a3a16f9a87286, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -2391,7 +2391,7 @@ GameObject:
   - component: {fileID: 1502697506}
   - component: {fileID: 1502697509}
   m_Layer: 0
-  m_Name: ' CalibrarBtn'
+  m_Name: CalibrarBtn
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

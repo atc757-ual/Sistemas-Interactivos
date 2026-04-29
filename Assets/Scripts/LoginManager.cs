@@ -23,25 +23,43 @@ public class LoginManager : MonoBehaviour
 
     void Awake()
     {
-        // Reparación de entorno UI
-        if (EventSystem.current == null)
-            new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
+        // 1. Reparación de entorno UI (Detección robusta)
+        if (Object.FindFirstObjectByType<EventSystem>() == null)
+        {
+            Debug.Log("<color=yellow>LOGIN: No se detectó EventSystem, creando uno...</color>");
+            GameObject es = new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
+        }
 
         Canvas c = GetComponentInParent<Canvas>() ?? Object.FindFirstObjectByType<Canvas>();
         if (c != null && c.GetComponent<GraphicRaycaster>() == null)
             c.gameObject.AddComponent<GraphicRaycaster>();
 
-        // Auto-vinculación de referencias
-        if (campoDNI == null) campoDNI = GameObject.Find("CampoDNI")?.GetComponent<TMP_InputField>();
-        if (campoNombre == null) campoNombre = GameObject.Find("CampoNombre")?.GetComponent<TMP_InputField>();
-        if (botonContinuar == null) botonContinuar = GameObject.Find("BotonContinuar")?.GetComponent<Button>();
-        if (botonAyuda == null) botonAyuda = GameObject.Find("AyudaBtn")?.GetComponent<Button>() ?? GameObject.Find("BotonAyuda")?.GetComponent<Button>();
-        if (panelAyuda == null) panelAyuda = GameObject.Find("AyudaPanel");
+        // 2. Vinculación robusta (incluso si están inactivos)
+        if (campoDNI == null) campoDNI = BuscarComponente<TMP_InputField>("CampoDNI");
+        if (campoNombre == null) campoNombre = BuscarComponente<TMP_InputField>("CampoNombre");
+        if (botonContinuar == null) botonContinuar = BuscarComponente<Button>("BotonContinuar");
+        if (botonAyuda == null) botonAyuda = BuscarComponente<Button>("AyudaBtn") ?? BuscarComponente<Button>("BotonAyuda");
+        if (panelAyuda == null) panelAyuda = BuscarInactivo("AyudaPanel");
+        
         if (IconInfo == null) IconInfo = BuscarInactivo("IconInfo") ?? BuscarInactivo("InfoIcon");
         if (IconClose == null) IconClose = BuscarInactivo("IconClose") ?? BuscarInactivo("CloseIcon");
 
-        if (panelAyuda != null) panelAyuda.SetActive(false);
+        if (panelAyuda != null) {
+            CanvasGroup cg = panelAyuda.GetComponent<CanvasGroup>();
+            if (cg == null) cg = panelAyuda.AddComponent<CanvasGroup>();
+            
+            cg.alpha = 0;
+            cg.blocksRaycasts = false;
+            cg.interactable = false;
+            panelAyuda.SetActive(false);
+        }
         SincronizarIconos();
+    }
+
+    T BuscarComponente<T>(string nombre) where T : Component
+    {
+        GameObject go = BuscarInactivo(nombre);
+        return go != null ? go.GetComponent<T>() : null;
     }
 
     GameObject BuscarInactivo(string nombre)
@@ -74,25 +92,75 @@ public class LoginManager : MonoBehaviour
             botonContinuar.onClick.AddListener(IniciarSesion);
         }
 
+        // Hover en lugar de clic para el panel de ayuda
         if (botonAyuda != null) {
-            botonAyuda.onClick.RemoveAllListeners();
-            botonAyuda.onClick.AddListener(AlternarAyuda);
+            botonAyuda.onClick.RemoveAllListeners(); // ya no usamos clic
+            var trigger = botonAyuda.gameObject.GetComponent<EventTrigger>() 
+                       ?? botonAyuda.gameObject.AddComponent<EventTrigger>();
+            trigger.triggers.Clear();
+
+            var entrar = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
+            entrar.callback.AddListener(_ => MostrarAyuda(true));
+            trigger.triggers.Add(entrar);
+
+            var salir = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
+            salir.callback.AddListener(_ => MostrarAyuda(false));
+            trigger.triggers.Add(salir);
         }
     }
 
-    public void AlternarAyuda()
+    // ── Fade suave del panel ───────────────────────────────────────────────────
+    CanvasGroup _ayudaCG;
+    Coroutine   _fadeCo;
+
+    void MostrarAyuda(bool mostrar)
     {
         if (panelAyuda == null) return;
-        panelAyuda.SetActive(!panelAyuda.activeSelf);
-        SincronizarIconos();
+
+        if (_ayudaCG == null) {
+            _ayudaCG = panelAyuda.GetComponent<CanvasGroup>();
+            if (_ayudaCG == null) _ayudaCG = panelAyuda.AddComponent<CanvasGroup>();
+        }
+
+        // Bloquear raycasts solo cuando se muestra
+        _ayudaCG.blocksRaycasts = mostrar;
+        _ayudaCG.interactable = mostrar;
+
+        // Icono cambia al instante
+        if (IconClose != null) IconClose.SetActive(mostrar);
+        if (IconInfo  != null) IconInfo.SetActive(!mostrar);
+
+        if (_fadeCo != null) StopCoroutine(_fadeCo);
+        _fadeCo = StartCoroutine(FadePanel(mostrar));
     }
+
+    IEnumerator FadePanel(bool aparecer)
+    {
+        panelAyuda.SetActive(true);
+        float desde = _ayudaCG.alpha;
+        float hasta = aparecer ? 1f : 0f;
+        float dur   = 0.2f;
+        float t     = 0f;
+
+        while (t < dur) {
+            t += Time.unscaledDeltaTime;
+            _ayudaCG.alpha = Mathf.Lerp(desde, hasta, t / dur);
+            yield return null;
+        }
+
+        _ayudaCG.alpha = hasta;
+        if (!aparecer) panelAyuda.SetActive(false);
+    }
+
+    // Mantener compatibilidad si algo llama AlternarAyuda por código antiguo
+    public void AlternarAyuda() => MostrarAyuda(panelAyuda != null && !panelAyuda.activeSelf);
 
     void SincronizarIconos()
     {
         if (panelAyuda == null) return;
         bool abierto = panelAyuda.activeSelf;
         if (IconClose != null) IconClose.SetActive(abierto);
-        if (IconInfo != null) IconInfo.SetActive(!abierto);
+        if (IconInfo  != null) IconInfo.SetActive(!abierto);
     }
 
     void ValidarDNI(string dni)

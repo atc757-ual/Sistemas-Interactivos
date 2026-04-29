@@ -147,7 +147,10 @@ public class GestorPaciente : MonoBehaviour
         };
 
         pacienteActual.historialPartidas.Add(nuevaPartida);
-        pacienteActual.puntuacionTotal += puntuacion;
+        
+        // No sumamos la puntuación de calibración al total del paciente
+        if (nombreJuego != "Calibración")
+            pacienteActual.puntuacionTotal += puntuacion;
 
         GuardarTodosLosDatos();
     }
@@ -155,17 +158,39 @@ public class GestorPaciente : MonoBehaviour
     // MÉTODOS DE CÁLCULO PARA EL HISTORIAL
     public float ObtenerPrecisionMedia()
     {
-        if (pacienteActual == null || pacienteActual.historialPartidas.Count == 0) return 0;
+        if (pacienteActual == null) return 0;
         float suma = 0;
-        foreach (var p in pacienteActual.historialPartidas) suma += p.precision;
-        return suma / pacienteActual.historialPartidas.Count;
+        int count = 0;
+        foreach (var p in pacienteActual.historialPartidas) 
+        {
+            if (p.juego != "Calibración")
+            {
+                suma += p.precision;
+                count++;
+            }
+        }
+        return count == 0 ? 0 : suma / count;
     }
 
     public int ObtenerMisionesExitosas()
     {
         if (pacienteActual == null) return 0;
         int count = 0;
-        foreach (var p in pacienteActual.historialPartidas) if (p.exito) count++;
+        foreach (var p in pacienteActual.historialPartidas) 
+        {
+            if (p.juego != "Calibración" && p.exito) count++;
+        }
+        return count;
+    }
+
+    public int ObtenerConteoEjercicios()
+    {
+        if (pacienteActual == null) return 0;
+        int count = 0;
+        foreach (var p in pacienteActual.historialPartidas) 
+        {
+            if (p.juego != "Calibración") count++;
+        }
         return count;
     }
 
@@ -173,7 +198,10 @@ public class GestorPaciente : MonoBehaviour
     {
         if (pacienteActual == null) return 0;
         float suma = 0;
-        foreach (var p in pacienteActual.historialPartidas) suma += p.tiempoJuego;
+        foreach (var p in pacienteActual.historialPartidas) 
+        {
+            if (p.juego != "Calibración") suma += p.tiempoJuego;
+        }
         return suma;
     }
 

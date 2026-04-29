@@ -28,6 +28,10 @@ public abstract class BaseActividad : MonoBehaviour
     protected bool juegoIniciado = false;
     protected bool juegoPausado = false;
 
+    // GC-safe cache para el raycast de emergencia en Update()
+    private PointerEventData _basePointerEvent;
+    private System.Collections.Generic.List<RaycastResult> _baseRaycastResults = new System.Collections.Generic.List<RaycastResult>();
+
     protected virtual void Start()
     {
         // GUARDIA DE SESIÓN: si no hay login válido, volver al Login
@@ -167,12 +171,12 @@ public abstract class BaseActividad : MonoBehaviour
         if (UnityEngine.InputSystem.Pointer.current != null && UnityEngine.InputSystem.Pointer.current.press.wasPressedThisFrame)
         {
             if (EventSystem.current == null) return;
-            PointerEventData eventData = new PointerEventData(EventSystem.current);
-            eventData.position = UnityEngine.InputSystem.Pointer.current.position.ReadValue();
-            var results = new System.Collections.Generic.List<RaycastResult>();
-            EventSystem.current.RaycastAll(eventData, results);
+            if (_basePointerEvent == null) _basePointerEvent = new PointerEventData(EventSystem.current);
+            _basePointerEvent.position = UnityEngine.InputSystem.Pointer.current.position.ReadValue();
+            _baseRaycastResults.Clear();
+            EventSystem.current.RaycastAll(_basePointerEvent, _baseRaycastResults);
 
-            foreach (var r in results)
+            foreach (var r in _baseRaycastResults)
             {
                 string n = r.gameObject.name.ToLower();
                 if (n.Contains("back") || n.Contains("salir") || n.Contains("menu") || n.Contains("atras") || n.Contains("volver"))

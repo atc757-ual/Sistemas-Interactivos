@@ -63,10 +63,17 @@ public class CarreraOcularManager : BaseActividad
     private bool _timerIniciado = false;
     private float _lastClickTime = 0f;
     private const float DOUBLE_CLICK_TIME = 0.3f;
+    
+    // Nueva lógica de parpadeo y detección
+    private float _blinkTimer = 0f;
+    private bool _eyesWereDetected = false;
+    private bool _isStarting = false;
 
     protected override void Start()
     {
-        usarValidacionOjos = false; // Desactivar bloqueo por Tobii para pruebas
+#if UNITY_EDITOR
+        usarValidacionOjos = false; // En el Editor desactivamos el bloqueo para agilizar las pruebas
+#endif
         
         // Ejecutamos NUESTRA vinculación robusta PRIMERO
         VincularUI();
@@ -207,7 +214,9 @@ public class CarreraOcularManager : BaseActividad
 
     public override void IniciarJuego()
     {
-        if (_enConteo || juegoIniciado) return;
+        if (_enConteo || juegoIniciado || _isStarting) return;
+        _isStarting = true;
+        if (textoMensajeInicio != null) textoMensajeInicio.gameObject.SetActive(false);
 
         // Reset de estado
         _vidasActuales = vidasMaximas;
@@ -286,37 +295,21 @@ public class CarreraOcularManager : BaseActividad
         
         base.IniciarJuego();
         _enConteo = false;
+        _isStarting = false;
         _timerIniciado = false; // El tiempo real solo empezará con el primer obstáculo
     }
 
     protected override void Update()
     {
-        // Forzar interactividad del botón y Ocultar estrictamente el contador hasta que empiece el conteo
-        if (!juegoIniciado)
+        // Lógica de detección de ojos e instrucciones reactivas
+        if (!juegoIniciado && !_juegoFinalizado)
         {
-            if (botonIniciar != null) botonIniciar.interactable = true;
-            
-            if (!_enConteo && textoContador != null && textoContador.gameObject.activeSelf) 
-            {
-                textoContador.gameObject.SetActive(false);
-            }
-
-            // --- LÓGICA DE DETECCIÓN DE OJOS ---
-            if (!juegoIniciado && !_enConteo && textoMensajeInicio != null)
-            {
-                // Si Tobii está conectado y detecta ojos, mostramos el mensaje. Si no, oculto.
-                var gaze = (EyeTracker.Instance != null) ? EyeTracker.Instance.LatestGazeData : null;
-                bool detectado = (gaze != null && (gaze.Left.GazePointValid || gaze.Right.GazePointValid));
-                textoMensajeInicio.gameObject.SetActive(detectado);
-            }
-
-            // FALLBACK A PRUEBA DE BALAS: Si el botón UI está bloqueado por algún panel invisible,
-            // cualquier clic de ratón en la pantalla forzará el inicio de la partida.
-            // IMPORTANTE: solo activo en el OverlayInicio, NO después de finalizar la partida.
-            if (!_enConteo && !_juegoFinalizado && UnityEngine.Input.GetMouseButtonDown(0))
-            {
-                IniciarJuego();
-            }
+            ManejarInstruccionesYParpadeo();
+        }
+        else if (_juegoFinalizado)
+        {
+            // Solo si no alcanzó el puntaje perfecto (opcional, aquí lo dejamos siempre activo para reintento)
+            ManejarReintentoPorParpadeo();
         }
 
         base.Update();
@@ -686,6 +679,7 @@ public class CarreraOcularManager : BaseActividad
         _colisiones = 0;
         _vidasActuales = vidasMaximas;
         _spawnTimer = 0f;
+        _isStarting = false; // Reset flag de inicio
 
         // Limpiar obstáculos existentes
         foreach (var obs in _obstaculosActivos) if (obs != null) Destroy(obs.gameObject);
@@ -698,5 +692,85 @@ public class CarreraOcularManager : BaseActividad
 
         // Lanzar el inicio con su contador
         IniciarJuego();
+    }
+
+    // --- MÉTODOS REPLICADOS DE EXPLOSIÓN GLOBOS ---
+
+    void ManejarInstruccionesYParpadeo()
+    {
+        bool eyesDetected = TobiiGazeProvider.Instance != null && TobiiGazeProvider.Instance.EyeDataValid;
+
+        if (overlayInicio != null && textoMensajeInicio != null)
+        {
+            if (textoMensajeInicio.gameObject.activeSelf != eyesDetected) {
+                textoMensajeInicio.gameObject.SetActive(eyesDetected);
+                if (eyesDetected) SetOverlayText(textoMensajeInicio.gameObject, "<b>¡Hemos detectado tus ojos!</b>\n\nPestañea o haz clic en el botón inferior para iniciar la aventura.");
+            }
+        }
+
+        if (!eyesDetected)
+        {
+            if (_eyesWereDetected) _blinkTimer += Time.deltaTime;
+        }
+        else
+        {
+            if (_eyesWereDetected && _blinkTimer > 0.1f && _blinkTimer < 0.5f)
+            {
+                _eyesWereDetected = false;
+                _blinkTimer = 0;
+                SetOverlayText(textoMensajeInicio.gameObject, "<b>¡Pestañeo detectado!</b>\n\nIniciando aventura...");
+                Invoke("IniciarJuego", 0.5f);
+            }
+            else
+            {
+                _eyesWereDetected = true;
+                _blinkTimer = 0;
+            }
+        }
+    }
+
+    void ManejarReintentoPorParpadeo()
+    {
+        bool eyesDetected = TobiiGazeProvider.Instance != null && TobiiGazeProvider.Instance.EyeDataValid;
+
+        if (overlayResult != null && subRes != null)
+        {
+            // Nota: Aquí usamos subRes para el mensaje reactivo
+            if (eyesDetected) {
+                SetOverlayText(subRes.gameObject, "<b>¡Hemos detectado tus ojos!</b>\n\nPestañea para reintentar la misión.");
+            }
+        }
+
+        if (!eyesDetected)
+        {
+            if (_eyesWereDetected) _blinkTimer += Time.deltaTime;
+        }
+        else
+        {
+            if (_eyesWereDetected && _blinkTimer > 0.1f && _blinkTimer < 0.5f)
+            {
+                _eyesWereDetected = false;
+                _blinkTimer = 0;
+                SetOverlayText(subRes.gameObject, "<b>¡Pestañeo detectado!</b>\n\nReiniciando misión...");
+                Invoke("ReiniciarJuego", 0.5f);
+            }
+            else
+            {
+                _eyesWereDetected = true;
+                _blinkTimer = 0;
+            }
+        }
+    }
+
+    void SetOverlayText(GameObject obj, string message)
+    {
+        if (obj == null) return;
+        var tmp = obj.GetComponent<TMP_Text>();
+        if (tmp == null) tmp = obj.GetComponentInChildren<TMP_Text>();
+        
+        if (tmp != null) {
+            tmp.richText = true;
+            tmp.text = message;
+        }
     }
 }

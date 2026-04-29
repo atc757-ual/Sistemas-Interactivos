@@ -19,6 +19,8 @@ public class ExplosionGlobosManager : MonoBehaviour
     [Header("UI Hierarchy")]
     [SerializeField] GameObject overlayInicio;
     [SerializeField] GameObject overlayFinal;
+    [SerializeField] GameObject overlayInstructions;
+    [SerializeField] GameObject overlayRetry;
     [SerializeField] GameObject playerCursor;
     [SerializeField] GameObject itemTemplate; 
     [SerializeField] RectTransform container;
@@ -45,9 +47,22 @@ public class ExplosionGlobosManager : MonoBehaviour
     private int   _itemsPopped, _vidasRestantes, _errors;
     private float _startTime, _timeRemaining;
     private bool  _timerRunning;
+    private float _finalScore;
+
+    // Blink detection
+    private float _blinkTimer = 0f;
+    private bool  _eyesWereDetected = false;
 
     void Start()
     {
+        // GUARDIA DE SESIÓN: si no hay login válido, volver al Login (igual que BaseActividad)
+        if (GestorPaciente.Instance == null || !GestorPaciente.Instance.EsSesionValida())
+        {
+            Debug.LogWarning("[ExplosionGlobos] Sin sesión válida. Redirigiendo a Login.");
+            SceneManager.LoadScene("Login");
+            return;
+        }
+
         AutoBind();
         if (startBtn) startBtn.onClick.AddListener(EmpezarConteo);
         if (retryBtn) retryBtn.onClick.AddListener(ReiniciarJuego);
@@ -56,12 +71,51 @@ public class ExplosionGlobosManager : MonoBehaviour
         SetState(GameState.Inicio);
     }
 
+    void ConfigurarCursorLaser(GameObject cursor)
+    {
+        if (cursor == null) return;
+        
+        var cursorImg = cursor.GetComponent<Image>();
+        if (cursorImg != null)
+        {
+            cursorImg.sprite = null; // Quitar el meteorito
+            cursorImg.color = Color.red;
+            
+            // Hacerlo un punto pequeño
+            var rt = cursor.GetComponent<RectTransform>();
+            rt.sizeDelta = new Vector2(10, 10);
+        }
+
+        // Añadir un brillo suave
+        GameObject glow = new GameObject("LaserGlow");
+        glow.transform.SetParent(cursor.transform, false);
+        var glowImg = glow.AddComponent<Image>();
+        glowImg.color = new Color(1, 0, 0, 0.4f);
+        var glowRt = glow.GetComponent<RectTransform>();
+        glowRt.sizeDelta = new Vector2(20, 20);
+
+        StartCoroutine(RutinaPulsoLaser(cursor.transform, glowRt));
+    }
+
+    IEnumerator RutinaPulsoLaser(Transform dot, RectTransform glow)
+    {
+        while (true)
+        {
+            float scale = 1f + Mathf.PingPong(Time.time * 2f, 0.2f);
+            if (dot) dot.localScale = new Vector3(scale, scale, 1f);
+            if (glow) glow.localScale = new Vector3(scale * 1.15f, scale * 1.15f, 1f);
+            yield return null;
+        }
+    }
+
     void AutoBind()
     {
         var canvas = GameObject.Find("Canvasa") ?? GameObject.Find("Canvas");
         if (canvas != null)
         {
             if (overlayInicio == null) overlayInicio = canvas.transform.Find("OverlayInicio")?.gameObject;
+            if (overlayInstructions == null) overlayInstructions = canvas.transform.Find("OverlayInstructions")?.gameObject;
+            if (overlayRetry == null) overlayRetry = canvas.transform.Find("OverlayRetry")?.gameObject;
             // Acepta tanto "OverlayFinal" como "OverlayResult" como nombre del overlay de resultados
             if (overlayFinal == null) overlayFinal = canvas.transform.Find("OverlayFinal")?.gameObject
                                                   ?? canvas.transform.Find("OverlayResult")?.gameObject;
@@ -73,15 +127,10 @@ public class ExplosionGlobosManager : MonoBehaviour
                 itemTemplate.name = "ItemTemplate_Hidden";
                 itemTemplate.SetActive(false);
 
-                // Desacoplar: el template ya tiene el sprite del meteorito (clonado arriba).
-                // Ahora limpiamos el sprite del PlayerCursor para que sea invisible y no
-                // compita visualmente con los ítems — solo su RectTransform sigue la mirada.
-                var cursorImg = playerCursor.GetComponent<Image>();
-                if (cursorImg != null) {
-                    cursorImg.sprite = null;
-                    cursorImg.color = Color.clear; // totalmente transparente
-                }
+                // Convertir el PlayerCursor en un punto láser rojo
+                ConfigurarCursorLaser(playerCursor);
             }
+
             if (container == null) container = canvas.GetComponent<RectTransform>();
             if (timerText == null) timerText = canvas.transform.Find("TimerText")?.GetComponent<TMP_Text>();
             if (fallosText == null) fallosText = canvas.transform.Find("fallos")?.GetComponent<TMP_Text>();
@@ -164,13 +213,16 @@ public class ExplosionGlobosManager : MonoBehaviour
 
     void EmpezarConteo()
     {
-        if (_state == GameState.Playing) return;
+        if (_state == GameState.Playing || _isStarting) return;
+        _isStarting = true;
+        if (overlayInstructions != null) overlayInstructions.SetActive(false);
         StartCoroutine(RutinaCountdown(overlayInicio, textoContador));
     }
 
     public void ReiniciarJuego()
     {
         ClearItems();
+        if (overlayRetry != null) overlayRetry.SetActive(false);
         StartCoroutine(RutinaCountdown(overlayFinal, counterRetry));
     }
 
@@ -204,8 +256,106 @@ public class ExplosionGlobosManager : MonoBehaviour
         IniciarJuego();
     }
 
-    void Update()
+    void ManejarInstruccionesYParpadeo()
     {
+        bool eyesDetected = TobiiGazeProvider.Instance != null && TobiiGazeProvider.Instance.EyeDataValid;
+
+        // Mostrar instrucciones solo si se detectan ojos
+        if (overlayInstructions != null)
+        {
+            if (overlayInstructions.activeSelf != eyesDetected) {
+                overlayInstructions.SetActive(eyesDetected);
+                if (eyesDetected) SetOverlayText(overlayInstructions, "<b>¡Hemos detectado tus ojos!</b>\n\nPestañea o haz clic en el botón inferior para iniciar la aventura.");
+            }
+        }
+
+        if (!eyesDetected)
+        {
+            if (_eyesWereDetected) _blinkTimer += Time.deltaTime;
+        }
+        else
+        {
+            // Si recuperamos los ojos después de un breve lapso (parpadeo)
+            if (_eyesWereDetected && _blinkTimer > 0.1f && _blinkTimer < 0.5f)
+            {
+                _eyesWereDetected = false; // Reset para evitar disparos múltiples
+                _blinkTimer = 0;
+                
+                // Mostrar mensaje de confirmación antes de iniciar
+                SetOverlayText(overlayInstructions, "<b>¡Pestañeo detectado!</b>\n\nIniciando aventura...");
+                Debug.Log("<color=magenta><b>[GAME]</b> Pestañeo detectado. Iniciando...</color>");
+                
+                Invoke("EmpezarConteo", 0.5f); // Breve delay para leer el mensaje
+            }
+            else
+            {
+                _eyesWereDetected = true;
+                _blinkTimer = 0;
+            }
+        }
+    }
+
+    void ManejarReintentoPorParpadeo()
+    {
+        bool eyesDetected = TobiiGazeProvider.Instance != null && TobiiGazeProvider.Instance.EyeDataValid;
+
+        if (overlayRetry != null)
+        {
+            if (overlayRetry.activeSelf != eyesDetected) {
+                overlayRetry.SetActive(eyesDetected);
+                if (eyesDetected) SetOverlayText(overlayRetry, "<b>¡Hemos detectado tus ojos!</b>\n\nPestañea para reintentar la misión.");
+            }
+        }
+
+        if (!eyesDetected)
+        {
+            if (_eyesWereDetected) _blinkTimer += Time.deltaTime;
+        }
+        else
+        {
+            if (_eyesWereDetected && _blinkTimer > 0.1f && _blinkTimer < 0.5f)
+            {
+                _eyesWereDetected = false;
+                _blinkTimer = 0;
+                
+                // Mostrar mensaje de confirmación
+                SetOverlayText(overlayRetry, "<b>¡Pestañeo detectado!</b>\n\nReiniciando misión...");
+                
+                Invoke("ReiniciarJuego", 0.5f); // Breve delay para leer el mensaje
+            }
+            else
+            {
+                _eyesWereDetected = true;
+                _blinkTimer = 0;
+            }
+        }
+    }
+
+    void SetOverlayText(GameObject overlay, string message)
+    {
+        if (overlay == null) return;
+        var tmp = overlay.GetComponentInChildren<TMP_Text>();
+        if (tmp != null) {
+            tmp.richText = true; // Forzar habilitación de tags
+            tmp.text = message;
+        }
+    }
+
+    void Update()
+
+    {
+        if (_state == GameState.Inicio)
+        {
+            if (!_isStarting) ManejarInstruccionesYParpadeo();
+            return;
+        }
+
+        if (_state == GameState.Results)
+        {
+            if (_finalScore < 100f) ManejarReintentoPorParpadeo();
+            return;
+        }
+
         if (_state != GameState.Playing) return;
 
         if (_timerRunning)
@@ -229,10 +379,12 @@ public class ExplosionGlobosManager : MonoBehaviour
         rt.anchoredPosition = local;
     }
 
+    private bool _isStarting = false;
+
     public void IniciarJuego()
     {
-        // Forzamos 20 elementos para evitar que el Inspector mande sobre el código
-        cantidadItems = 20;
+        cantidadItems = 7;
+        _isStarting = false;
 
         if (itemTemplate != null) itemTemplate.SetActive(false); 
 
@@ -321,7 +473,8 @@ public class ExplosionGlobosManager : MonoBehaviour
             positions.Add(pos);
             rt.anchoredPosition = pos;
             
-            var ctrl = go.GetComponent<BalloonController>() ?? go.AddComponent<BalloonController>();
+            var ctrl = go.GetComponent<BalloonController>();
+            if (ctrl == null) ctrl = go.AddComponent<BalloonController>();
             ctrl.Init(i + 1, 130f, this, useEyeTracking);
             list.Add(ctrl);
         }
@@ -439,7 +592,7 @@ public class ExplosionGlobosManager : MonoBehaviour
         scoreFinal = Mathf.Clamp(scoreFinal, 0, 100);
 
         if (GestorPaciente.Instance != null)
-            GestorPaciente.Instance.GuardarPartida("Globos", Mathf.RoundToInt(scoreFinal), 1, (_itemsPopped / (float)Mathf.Max(1, _itemsPopped + _errors)) * 100f, success, elapsed, _errors);
+            GestorPaciente.Instance.GuardarPartida("Explosión Estelar", Mathf.RoundToInt(scoreFinal), 1, (_itemsPopped / (float)Mathf.Max(1, _itemsPopped + _errors)) * 100f, success, elapsed, _errors);
 
         if (finalScoreText) finalScoreText.text = Mathf.RoundToInt(scoreFinal).ToString();
         if (finalErrorsText) finalErrorsText.text = _errors.ToString();
@@ -448,11 +601,16 @@ public class ExplosionGlobosManager : MonoBehaviour
         if (finalResultText) finalResultText.text = resultTitle;
         if (finalMessageText) finalMessageText.text = resultMsg;
 
+        _finalScore = scoreFinal;
         SetState(GameState.Results);
-        if (scoreFinal >= 100f && retryBtn != null) 
+
+        // Si el puntaje es 100, ocultar botón de reintento y su overlay
+        if (_finalScore >= 100f) 
         {
-            retryBtn.gameObject.SetActive(false);
+            if (retryBtn != null) retryBtn.gameObject.SetActive(false);
+            if (overlayRetry != null) overlayRetry.SetActive(false);
         }
+        
         ClearItems();
     }
 
