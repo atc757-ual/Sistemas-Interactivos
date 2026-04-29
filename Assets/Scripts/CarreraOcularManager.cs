@@ -324,7 +324,7 @@ public class CarreraOcularManager : BaseActividad
             }
         }
 
-        // ProcesarEntradaTobii(); // Comentado por ahora
+        ProcesarEntradaTobii();
         ProcesarEntradaMouse(); // Fallback estilo dinosaurio de Chrome
         MoverJugador();
         GestionarObstaculos();
@@ -340,20 +340,27 @@ public class CarreraOcularManager : BaseActividad
         }
     }
 
-    /*
     void ProcesarEntradaTobii()
     {
+        if (EyeTracker.Instance == null) return;
+        
         var gaze = EyeTracker.Instance.LatestGazeData;
         if (gaze == null || (!gaze.Left.GazePointValid && !gaze.Right.GazePointValid)) return;
 
-        // Promedio de mirada en coordenadas 0..1 (Y: 0 abajo, 1 arriba)
-        float avgY = (gaze.Left.GazePointOnDisplayArea.y + gaze.Right.GazePointOnDisplayArea.y) / 2f;
+        // Promedio de mirada en coordenadas 0..1 (Y: 0 abajo, 1 arriba en Tobii GazePointOnDisplayArea? No, Tobii es 0 top)
+        // En Tobii SDK para Unity, GazePointOnDisplayArea.y es 0 en el borde SUPERIOR de la pantalla.
+        float avgY = 0;
+        int count = 0;
+        if (gaze.Left.GazePointValid) { avgY += gaze.Left.GazePointOnDisplayArea.y; count++; }
+        if (gaze.Right.GazePointValid) { avgY += gaze.Right.GazePointOnDisplayArea.y; count++; }
+        avgY /= count;
 
-        // Dividimos la pantalla en dos zonas: Arriba de 0.6 y Abajo de 0.4
-        if (avgY > 0.6f) _targetY = alturaArriba;
-        else if (avgY < 0.4f) _targetY = alturaAbajo;
+        // Si avgY < 0.4 (ZONA SUPERIOR, porque 0 es TOP), vamos ARRIBA.
+        // Si avgY > 0.6 (ZONA INFERIOR, porque 1 es BOTTOM), vamos ABAJO.
+        if (avgY < 0.4f) _targetY = alturaArriba;
+        else if (avgY > 0.6f) _targetY = alturaAbajo;
+        else _targetY = alturaCentro;
     }
-    */
 
     void ProcesarEntradaMouse()
     {

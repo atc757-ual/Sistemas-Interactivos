@@ -10,6 +10,7 @@ public class ActivitiesManager : MonoBehaviour
     public Button btnLaberinto;
     public Button btnCarrera;
     public Button btnExplosion;
+    public Button btnEstrella;
     public Button btnVolver;
 
     void Awake()
@@ -28,6 +29,7 @@ public class ActivitiesManager : MonoBehaviour
         ConfigurarBoton(btnLaberinto, () => SceneManager.LoadScene("LaberintoVisual"));
         ConfigurarBoton(btnCarrera, () => SceneManager.LoadScene("CarreraOcular"));
         ConfigurarBoton(btnExplosion, () => SceneManager.LoadScene("ExplosionGlobos"));
+        ConfigurarBoton(btnEstrella, () => SceneManager.LoadScene("EstrellaLineal"));
         ConfigurarBoton(btnVolver, () => SceneManager.LoadScene("Home"));
 
         Debug.Log("<color=cyan><b>[Activities]</b> Navegación lista.</color>");
@@ -43,9 +45,10 @@ public class ActivitiesManager : MonoBehaviour
 
     void VincularElementosManual()
     {
-        if (btnLaberinto == null) btnLaberinto = BuscarBoton("Card_LaberintoEstelar") ?? BuscarPorContenido("planeta") ?? BuscarPorContenido("laberinto");
-        if (btnCarrera == null) btnCarrera = BuscarBoton("Card_CarreraOcular") ?? BuscarPorContenido("cometa") ?? BuscarPorContenido("carrera");
-        if (btnExplosion == null) btnExplosion = BuscarBoton("Card_ExplosiónEstelar") ?? BuscarBoton("Card_ExplosionEstelar") ?? BuscarPorContenido("estrella") ?? BuscarPorContenido("explos");
+        if (btnLaberinto == null) btnLaberinto = BuscarBoton("BtnLaberintoVisual") ?? BuscarBoton("Card_LaberintoEstelar") ?? BuscarPorContenido("laberinto");
+        if (btnCarrera == null) btnCarrera = BuscarBoton("BtnCarreraOcular") ?? BuscarBoton("Card_CarreraOcular") ?? BuscarPorContenido("carrera");
+        if (btnExplosion == null) btnExplosion = BuscarBoton("BtnExplosionGlobos") ?? BuscarBoton("Card_ExplosiónEstelar") ?? BuscarBoton("Card_ExplosionEstelar") ?? BuscarPorContenido("globos") ?? BuscarPorContenido("explos");
+        if (btnEstrella == null) btnEstrella = BuscarBoton("BtnEstrellaLineal") ?? BuscarBoton("Card_Estrella Lineal") ?? BuscarPorContenido("estrella");
         if (btnVolver == null) btnVolver = BuscarBoton("VolverBtn") ?? BuscarPorContenido("volver");
     }
 
