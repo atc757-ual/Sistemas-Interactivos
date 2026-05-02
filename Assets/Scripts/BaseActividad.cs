@@ -31,6 +31,7 @@ public abstract class BaseActividad : MonoBehaviour
     // GC-safe cache para el raycast de emergencia en Update()
     private PointerEventData _basePointerEvent;
     private System.Collections.Generic.List<RaycastResult> _baseRaycastResults = new System.Collections.Generic.List<RaycastResult>();
+    private float _ignoreInputTimer = 0.5f; // Evitar clicks fantasma al cargar escena
 
     protected virtual void Start()
     {
@@ -168,6 +169,11 @@ public abstract class BaseActividad : MonoBehaviour
     protected virtual void Update()
     {
         // --- PUENTE DE EMERGENCIA PARA ACTIVIDADES (Migrado a New Input System) ---
+        if (_ignoreInputTimer > 0) {
+            _ignoreInputTimer -= Time.unscaledDeltaTime;
+            return;
+        }
+
         if (UnityEngine.InputSystem.Pointer.current != null && UnityEngine.InputSystem.Pointer.current.press.wasPressedThisFrame)
         {
             if (EventSystem.current == null) return;
@@ -178,14 +184,16 @@ public abstract class BaseActividad : MonoBehaviour
 
             foreach (var r in _baseRaycastResults)
             {
+                // Solo detectar si es un botón activo e interactuable
+                Button b = r.gameObject.GetComponent<Button>();
+                if (b == null || !b.interactable || !r.gameObject.activeInHierarchy) continue;
+
                 string n = r.gameObject.name.ToLower();
                 if (n.Contains("back") || n.Contains("salir") || n.Contains("menu") || n.Contains("atras") || n.Contains("volver"))
                 {
+                    Debug.Log($"[BaseActividad] Salida de emergencia activada por: {r.gameObject.name}");
                     SalirAlMenu();
-                }
-                if (n.Contains("pausar") || n.Contains("pause"))
-                {
-                    AlternarPausa();
+                    break;
                 }
             }
         }

@@ -36,17 +36,12 @@ public class HistoryManager : MonoBehaviour
 
     void Start()
     {
+        // Forzar validación de sesión
+        if (GestorPaciente.Instance != null) GestorPaciente.Instance.EsSesionValida();
+
         AutoVincular();
         
-        // AUTO-LOGIN TEST: Si no hay nadie, logueamos al primero (Alex) para ver los datos
-        if (GestorPaciente.Instance != null && GestorPaciente.Instance.pacienteActual == null)
-        {
-            if (GestorPaciente.Instance.listaPacientes.Count > 0)
-            {
-                GestorPaciente.Instance.IniciarSesion(GestorPaciente.Instance.listaPacientes[0]);
-                Debug.Log("[History] Auto-login de prueba: " + GestorPaciente.Instance.pacienteActual.nombre);
-            }
-        }
+
 
         CargarEstadisticas();
 
@@ -213,20 +208,57 @@ public class HistoryManager : MonoBehaviour
 
         LimpiarTabla();
 
-        // Header siempre primero
-        CrearFilaElegante("FECHA", "PUNTAJE", "ERRORES", "TIEMPO", true, -1);
+        // ── CABECERA FIJA ──
+        // Buscamos o creamos un contenedor para la cabecera fija
+        Transform headerParent = tableContainer.parent.parent; // OverlayDetalle
+        RectTransform rtHeader = null;
+        GameObject headerObj = GameObject.Find("Header_Fijo_Historial");
+        
+        if (headerObj == null) {
+            headerObj = new GameObject("Header_Fijo_Historial");
+            headerObj.transform.SetParent(headerParent, false);
+            headerObj.transform.SetSiblingIndex(tableContainer.parent.GetSiblingIndex()); // Justo encima del viewport
+            rtHeader = headerObj.AddComponent<RectTransform>();
+            rtHeader.anchorMin = new Vector2(0.5f, 0.5f);
+            rtHeader.anchorMax = new Vector2(0.5f, 0.5f);
+            rtHeader.pivot = new Vector2(0.5f, 1f);
+            rtHeader.sizeDelta = new Vector2(950, 45); // Ancho fijo pedido
+            rtHeader.anchoredPosition = new Vector2(0, 230); // Posición pedida
+
+            // Layout para que la fila interna ocupe todo el ancho
+            var vlg = headerObj.AddComponent<VerticalLayoutGroup>();
+            vlg.childControlHeight = true;
+            vlg.childControlWidth = true;
+            vlg.childForceExpandHeight = true;
+            vlg.childForceExpandWidth = true;
+        } else {
+            rtHeader = headerObj.GetComponent<RectTransform>();
+            foreach (Transform child in headerObj.transform) Destroy(child.gameObject);
+            rtHeader.anchorMin = new Vector2(0.5f, 0.5f);
+            rtHeader.anchorMax = new Vector2(0.5f, 0.5f);
+            rtHeader.sizeDelta = new Vector2(950, 45);
+            rtHeader.anchoredPosition = new Vector2(0, 230);
+        }
+
+        CrearFilaElegante("FECHA", "PUNTAJE", "ERRORES", "TIEMPO", true, -1, headerObj.transform);
 
         int count = 0;
         if (GestorPaciente.Instance != null && GestorPaciente.Instance.pacienteActual != null)
         {
             var pActual = GestorPaciente.Instance.pacienteActual;
+            string nombreJuegoNormalizado = nombreJuego.Trim().ToUpper();
+
+            Debug.Log($"<color=orange>[History] Diagnóstico para {pActual.nombre} ({pActual.dni}):</color>");
+            Debug.Log($"[History] Buscando partidas de: '{nombreJuegoNormalizado}' (Total en historial: {pActual.historialPartidas.Count})");
 
             // Datos con colores alternos (más reciente primero)
             int rowIdx = 0;
             for (int i = pActual.historialPartidas.Count - 1; i >= 0; i--)
             {
                 Partida p = pActual.historialPartidas[i];
-                if (p.juego == nombreJuego)
+                string juegoEnRegistro = p.juego.Trim().ToUpper();
+
+                if (juegoEnRegistro == nombreJuegoNormalizado)
                 {
                     CrearFilaElegante(
                         p.fecha,
@@ -234,12 +266,21 @@ public class HistoryManager : MonoBehaviour
                         p.errores.ToString(),
                         p.tiempoJuego.ToString("F1") + "s",
                         false,
-                        rowIdx
+                        rowIdx++
                     );
                     count++;
-                    rowIdx++;
+                }
+                else 
+                {
+                    // Log opcional para ver qué se está saltando (puedes comentarlo si hay demasiados registros)
+                    // Debug.Log($"[History] Saltando registro: '{juegoEnRegistro}' no coincide con '{nombreJuegoNormalizado}'");
                 }
             }
+            Debug.Log($"<color=green>[History] Filtrado finalizado. Se encontraron {count} coincidencias.</color>");
+        }
+        else
+        {
+            Debug.LogWarning("[History] No se puede mostrar historial: GestorPaciente o pacienteActual es NULL");
         }
 
         // txtContenido siempre al final para que quede debajo del header y las filas
@@ -258,16 +299,21 @@ public class HistoryManager : MonoBehaviour
         }
     }
 
-    void CrearFilaElegante(string c1, string c2, string c3, string c4, bool esEncabezado, int index)
+    void CrearFilaElegante(string c1, string c2, string c3, string c4, bool esEncabezado, int index, Transform parentOverride = null)
     {
-        if (tableContainer == null) return;
+        if (tableContainer == null && parentOverride == null) return;
 
         // Crear contenedor de fila
         GameObject filaObj = new GameObject("Fila_" + (esEncabezado ? "Header" : index.ToString()));
-        filaObj.transform.SetParent(tableContainer, false);
+        filaObj.transform.SetParent(parentOverride != null ? parentOverride : tableContainer, false);
         
         RectTransform rtFila = filaObj.AddComponent<RectTransform>();
         rtFila.sizeDelta = new Vector2(0, 45); // Altura de fila
+        
+        // Añadir LayoutElement para que el VerticalLayoutGroup con childControlHeight=true respete el tamaño
+        LayoutElement le = filaObj.AddComponent<LayoutElement>();
+        le.minHeight = 45;
+        le.preferredHeight = 45;
 
         // Fondo de la fila
         Image imgFila = filaObj.AddComponent<Image>();
@@ -295,6 +341,11 @@ public class HistoryManager : MonoBehaviour
         GameObject celdaObj = new GameObject("Celda");
         celdaObj.transform.SetParent(parent, false);
         
+        // Añadir LayoutElement para que el HorizontalLayoutGroup reparta el ancho
+        LayoutElement le = celdaObj.AddComponent<LayoutElement>();
+        le.flexibleWidth = 1;
+        le.minHeight = 40;
+        
         TMP_Text t = celdaObj.AddComponent<TextMeshProUGUI>();
         t.text = negrita ? $"<b>{texto}</b>" : texto;
         t.alignment = alig;
@@ -307,21 +358,67 @@ public class HistoryManager : MonoBehaviour
             t.fontSharedMaterial = txtContenido.fontSharedMaterial;
         }
     }
-
     void LimpiarTabla()
     {
         if (tableContainer == null) return;
+
+        // Aseguramos que la tabla esté dentro de un contenedor de 500px con scroll
+        // sin afectar al tamaño del overlay principal
+        RectTransform rtTable = tableContainer.GetComponent<RectTransform>();
+        Transform currentParent = tableContainer.parent;
         
+        // Buscamos si ya existe un objeto "Viewport_Historial"
+        GameObject vObj = null;
+        if (currentParent.name == "Viewport_Historial") {
+            vObj = currentParent.gameObject;
+        } else {
+            // Si no existe, creamos uno intermedio de 500px
+            vObj = new GameObject("Viewport_Historial", typeof(RectTransform), typeof(RectMask2D), typeof(ScrollRect));
+            vObj.transform.SetParent(currentParent, false);
+            vObj.transform.SetSiblingIndex(tableContainer.GetSiblingIndex());
+            tableContainer.SetParent(vObj.transform, false);
+        }
+
+        RectTransform rtViewport = vObj.GetComponent<RectTransform>();
+        // Posicionar y dimensionar el Viewport a 500 de alto y 950 de ancho fijo
+        rtViewport.anchorMin = new Vector2(0.5f, 0.5f);
+        rtViewport.anchorMax = new Vector2(0.5f, 0.5f);
+        rtViewport.pivot = new Vector2(0.5f, 0.5f);
+        rtViewport.sizeDelta = new Vector2(950, 500); 
+        rtViewport.anchoredPosition = new Vector2(0, -65); // Justo debajo del header
+
+        // FORZAR que el contenedor de la tabla se estire a lo ancho del viewport
+        rtTable.anchorMin = new Vector2(0, 1); // Arriba, estirar ancho
+        rtTable.anchorMax = new Vector2(1, 1);
+        rtTable.pivot = new Vector2(0.5f, 1);
+        rtTable.anchoredPosition = Vector2.zero;
+        rtTable.sizeDelta = new Vector2(0, rtTable.sizeDelta.y); // Ancho flexible (0 offset de los anchors)
+
+        ScrollRect scroll = vObj.GetComponent<ScrollRect>();
+        scroll.content = rtTable;
+        scroll.viewport = rtViewport;
+        scroll.horizontal = false;
+        scroll.vertical = true;
+        scroll.scrollSensitivity = 45;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+
         // Aseguramos que tenga Layout para las filas
         VerticalLayoutGroup vlg = tableContainer.GetComponent<VerticalLayoutGroup>();
         if (vlg == null) vlg = tableContainer.gameObject.AddComponent<VerticalLayoutGroup>();
         
-        vlg.childControlHeight = false;
+        vlg.childControlHeight = true; 
         vlg.childForceExpandHeight = false;
         vlg.childControlWidth = true;
         vlg.childForceExpandWidth = true;
+        vlg.childAlignment = TextAnchor.UpperCenter; // Alinear arriba para que no se vea centrado con pocos datos
         vlg.spacing = 5;
         vlg.padding = new RectOffset(5, 5, 5, 5);
+
+        // Añadimos ContentSizeFitter para que el contenedor crezca con las filas
+        ContentSizeFitter csf = tableContainer.GetComponent<ContentSizeFitter>();
+        if (csf == null) csf = tableContainer.gameObject.AddComponent<ContentSizeFitter>();
+        csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        csf.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
 
         foreach (Transform child in tableContainer)
         {

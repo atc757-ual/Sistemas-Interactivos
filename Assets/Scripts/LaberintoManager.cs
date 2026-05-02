@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using Tobii.Research.Unity;
@@ -63,6 +64,7 @@ public class LaberintoManager : BaseActividad
     private List<Vector2Int> _nodosValidados = new List<Vector2Int>(); 
     private GeneradorLaberinto _generador;
     private bool _enMeta = false;
+    private bool _permitirReintento = false;
     private float _tiempoRestante;
     private bool _esperandoInicioPosicion = false;
     private bool _enCuentaRegresiva = false;
@@ -70,17 +72,27 @@ public class LaberintoManager : BaseActividad
     // Control de parpadeo (estandarizado)
     private float _blinkTimer = 0f;
     private bool _eyesWereDetected = false;
+    
+    // Control de flujo inicial (1s o mirada)
+    private bool _instruccionesMostradas = false;
+    private bool _inicioHabilitado = false;
 
     protected override void Start()
     {
-        // 1. Mapeamos todos los objetos por nombre según la jerarquía
-        MapearJerarquia();
+        if (GestorPaciente.Instance == null || !GestorPaciente.Instance.EsSesionValida()) return;
+
+        usarValidacionOjos = false; // Desactivamos el control automático de la Base para manejarlo nosotros
         base.Start(); // Configura botones básicos y overlayInicio
         
+        // 1. Mapeamos todos los objetos por nombre según la jerarquía
+        MapearJerarquia();
         _tiempoRestante = tiempoLimite;
 
         // 2. ESTADO INICIAL: Solo fondo y OverlayInicio visibles
         ConfigurarVisibilidad(inicio: true, juego: false, final: false);
+        
+        // Iniciamos el delay de 1s para habilitar el botón/instrucciones
+        StartCoroutine(RoutineInicioDelayed());
         
         _generador = GetComponent<GeneradorLaberinto>();
         if (_generador != null) {
@@ -122,45 +134,38 @@ public class LaberintoManager : BaseActividad
             if (go != null) timerText = go.GetComponent<TMP_Text>();
         }
         
-        // Overlays (Búsqueda más agresiva por si están desactivados)
         Canvas mainCanvas = GetComponentInParent<Canvas>();
         if (mainCanvas == null) mainCanvas = GameObject.FindFirstObjectByType<Canvas>();
 
         if (mainCanvas != null) {
             if (overlayInicio == null) overlayInicio = mainCanvas.transform.Find("OverlayInicio")?.gameObject;
             if (overlayFinal == null) overlayFinal = mainCanvas.transform.Find("OverlayFinal")?.gameObject;
-            if (overlayRetry == null) overlayRetry = mainCanvas.transform.Find("OverlayRetry")?.gameObject;
+            if (overlayRetry == null) {
+                overlayRetry = mainCanvas.transform.Find("OverlayRetry")?.gameObject;
+                if (overlayRetry == null && overlayFinal != null) {
+                    overlayRetry = overlayFinal.transform.Find("OverlayRetry")?.gameObject;
+                }
+            }
 
-            // Botón Volver — siempre en la raíz del Canvas
             if (botonVolver == null) {
-                Transform vt = mainCanvas.transform.Find("VolverBtn")
-                             ?? mainCanvas.transform.Find("BotonVolver")
-                             ?? mainCanvas.transform.Find("BackBtn");
+                Transform vt = mainCanvas.transform.Find("VolverBtn") ?? mainCanvas.transform.Find("BotonVolver") ?? mainCanvas.transform.Find("BackBtn");
                 if (vt != null) {
                     botonVolver = vt.gameObject;
                     Button btnVolver = vt.GetComponent<Button>();
                     if (btnVolver != null) {
                         btnVolver.onClick.RemoveAllListeners();
-                        btnVolver.onClick.AddListener(() =>
-                            UnityEngine.SceneManagement.SceneManager.LoadScene("Activities"));
+                        btnVolver.onClick.AddListener(() => UnityEngine.SceneManagement.SceneManager.LoadScene("Activities"));
                     }
                 }
             }
         }
 
-        // Búsqueda del botón y mensaje (OverlayInstructions) de forma robusta
         if (overlayInicio != null) {
             if (textBienvenida == null) textBienvenida = overlayInicio.transform.Find("OverlayTitle")?.GetComponent<TMP_Text>();
             
             if (botonIniciar == null) {
-                // Buscamos el botón "BotonInicio" dentro de los hijos del overlay
-                Button[] todosLosBotones = overlayInicio.GetComponentsInChildren<Button>(true);
-                foreach (var b in todosLosBotones) {
-                    if (b.name.Contains("Inicio") || b.name.Contains("Start")) {
-                        botonIniciar = b;
-                        break;
-                    }
-                }
+                Transform tInicio = overlayInicio.transform.Find("BotonInicio");
+                if (tInicio != null) botonIniciar = tInicio.GetComponent<Button>();
             }
 
             if (botonIniciar != null) {
@@ -169,29 +174,35 @@ public class LaberintoManager : BaseActividad
                     Debug.Log("🚀 [TOBII] ¡BOTÓN INICIAR PULSADO!");
                     IniciarJuego();
                 });
-                botonIniciar.interactable = true; // Forzamos interactuable
+                botonIniciar.interactable = true; 
             }
-        }
 
-        if (overlayInstructions == null && overlayInicio != null) {
-            foreach (Transform t in overlayInicio.GetComponentsInChildren<Transform>(true)) {
-                if (t.name.Contains("Instruction") || t.name.Contains("Intstruction")) {
-                    overlayInstructions = t.gameObject;
-                    break;
+            if (overlayInstructions == null) {
+                foreach (Transform t in overlayInicio.GetComponentsInChildren<Transform>(true)) {
+                    if (t.name.Contains("Instruction") || t.name.Contains("Intstruction")) {
+                        overlayInstructions = t.gameObject;
+                        break;
+                    }
+                }
+            }
+
+            if (counterInicio == null) {
+                foreach (Transform t in overlayInicio.GetComponentsInChildren<Transform>(true)) {
+                    if (t.name == "Counter" || t.name.Contains("Contador")) {
+                        counterInicio = t.gameObject;
+                        textCountdown = counterInicio.GetComponent<TMP_Text>() ?? counterInicio.GetComponentInChildren<TMP_Text>();
+                        break;
+                    }
                 }
             }
         }
 
-        if (counterInicio == null && overlayInicio != null) {
-            foreach (Transform t in overlayInicio.GetComponentsInChildren<Transform>(true)) {
-                if (t.name == "Counter" || t.name.Contains("Contador")) {
-                    counterInicio = t.gameObject;
-                    textCountdown = counterInicio.GetComponent<TMP_Text>() ?? counterInicio.GetComponentInChildren<TMP_Text>();
-                    break;
-                }
-            }
-            if (counterInicio != null) counterInicio.SetActive(false); // Apagado por defecto
-        }
+        // --- ESTADO INICIAL DE CALMA ---
+        if (overlayInstructions != null) overlayInstructions.SetActive(false);
+        if (botonIniciar != null) botonIniciar.gameObject.SetActive(false);
+        if (counterInicio != null) counterInicio.SetActive(false);
+        _instruccionesMostradas = false;
+        _inicioHabilitado = false; // Se activará por la corutina lanzada en Start
         
         // Elementos del OverlayFinal (Hijos y Nietos)
         if (overlayFinal != null) {
@@ -286,11 +297,20 @@ public class LaberintoManager : BaseActividad
                 overlayFinal.transform.SetAsLastSibling();
                 if (mazeContainer != null) mazeContainer.SetActive(false);
                 if (playerCursor != null) playerCursor.gameObject.SetActive(false);
+                if (botonReload != null) botonReload.SetActive(false); 
+                
+                // LIMPIEZA PROFUNDA: Apagamos el texto de reintento si está dentro del panel final
+                if (overlayRetry != null) overlayRetry.SetActive(false);
+                
+                // Si la referencia sigue fallando, lo buscamos manualmente para apagarlo
+                Transform trRetry = overlayFinal.transform.Find("OverlayRetry");
+                if (trRetry != null) trRetry.gameObject.SetActive(false);
             }
         }
         if (overlayRetry != null) overlayRetry.SetActive(false);
+        _permitirReintento = false;
 
-        // ... el botón Volver se pone después del overlay para que SIEMPRE esté encima
+        // El botón Volver se pone después del overlay para que SIEMPRE esté encima
         if (botonVolver != null) {
             botonVolver.SetActive(!juego); 
             if (!juego) botonVolver.transform.SetAsLastSibling(); 
@@ -299,11 +319,10 @@ public class LaberintoManager : BaseActividad
 
     public override void IniciarJuego()
     {
+        // 1. Visibilidad: Activamos juego y mantenemos el overlay para el mensaje
         ConfigurarVisibilidad(inicio: true, juego: true, final: false);
-        _esperandoInicioPosicion = true;
-        juegoIniciado = false;
         
-        // Limpiamos la pantalla de inicio dejando solo el Counter visible
+        // 2. Limpieza: Ocultamos botones e instrucciones, pero dejamos el Counter para el mensaje
         if (overlayInicio != null) {
             foreach (Transform child in overlayInicio.transform) {
                 if (child.gameObject != counterInicio) {
@@ -313,19 +332,21 @@ public class LaberintoManager : BaseActividad
         }
         if (botonIniciar != null) botonIniciar.gameObject.SetActive(false);
 
-        // Usamos EL COUNTER para dar la instrucción de moverse al START
+        // 3. Instrucción Manual: Ponemos el mensaje en el objeto del contador
         if (counterInicio != null) {
             counterInicio.SetActive(true);
-            TMP_Text cText = counterInicio.GetComponentInChildren<TMP_Text>();
-            if (cText != null) {
-                cText.text = "¡Lleva al astronauta al START\npara comenzar la misión!";
-                cText.color = Color.white;
+            if (textCountdown != null) {
+                textCountdown.text = "¡Lleva el astronauta al inicio!";
+                textCountdown.fontSize = 50; // Ajustamos tamaño para el mensaje largo
             }
         }
 
-        // RESET de posición del astronauta al centro desplazado para evitar que toque el START por error
-        if (playerCursor != null) playerCursor.anchoredPosition = new Vector2(0, -30f);
-        _posicionActual = new Vector2(0, -30f);
+        // 4. Activamos el estado de espera
+        _esperandoInicioPosicion = true;
+        _enCuentaRegresiva = false;
+        juegoIniciado = false;
+        
+        Debug.Log("Waiting for player to reach StartPoint...");
     }
 
     public override void ReiniciarJuego()
@@ -341,49 +362,45 @@ public class LaberintoManager : BaseActividad
         if (_generador != null) _generador.Generar();
         ReiniciarPosicion();
 
-        // IMPORTANTE: Volvemos al estado visual de Inicio
+        // IMPORTANTE: Volvemos al estado visual de Inicio (pero con el mensaje de arrastrar)
         ConfigurarVisibilidad(inicio: true, juego: true, final: false);
 
-        // Limpiamos la pantalla de inicio dejando solo el Counter visible
+        // Limpieza de UI
         if (overlayInicio != null) {
             foreach (Transform child in overlayInicio.transform) {
-                if (child.gameObject != counterInicio) {
-                    child.gameObject.SetActive(false);
-                }
+                if (child.gameObject != counterInicio) child.gameObject.SetActive(false);
             }
         }
-        if (botonIniciar != null) botonIniciar.gameObject.SetActive(false);
 
-        // Usamos EL COUNTER para dar la instrucción de moverse al START
         if (counterInicio != null) {
             counterInicio.SetActive(true);
-            TMP_Text cText = counterInicio.GetComponentInChildren<TMP_Text>();
-            if (cText != null) {
-                cText.text = "¡Lleva al astronauta al START\npara comenzar la misión!";
-                cText.color = Color.white;
+            if (textCountdown != null) {
+                textCountdown.text = "¡Lleva el astronauta al inicio!";
+                textCountdown.fontSize = 50;
             }
         }
 
-        // El botón se apaga porque ya ha cumplido su función (vamos directo al juego)
-        if (botonIniciar != null) botonIniciar.gameObject.SetActive(false);
-        
-        _esperandoInicioPosicion = true; // <--- Vamos directo a la fase de posicionamiento
+        _esperandoInicioPosicion = true;
+        _enCuentaRegresiva = false;
         juegoIniciado = false;
-
-        // RESET visual del TimerText
-        if (timerText != null) {
-            timerText.text = tiempoLimite.ToString("F0") + "s";
-            timerText.color = Color.white;
-            timerText.alpha = 1f;
-        }
     }
+
 
     protected override void Update()
     {
         base.Update();
         if (_enMeta)
         {
-            if (!juegoPausado) ManejarReintentoPorParpadeo();
+            // Búsqueda de emergencia si la referencia se perdió (por estar anidado)
+            if (overlayRetry == null && overlayFinal != null) {
+                Transform tr = overlayFinal.transform.Find("OverlayRetry");
+                if (tr != null) overlayRetry = tr.gameObject;
+            }
+
+            if (!juegoPausado) 
+            {
+                ManejarReintentoPorParpadeo();
+            }
             return;
         }
         if (juegoPausado) return;
@@ -444,18 +461,17 @@ public class LaberintoManager : BaseActividad
     {
         _enCuentaRegresiva = true;
         
-        // Ya no apagamos el counterInicio aquí, porque se usa para el número 3, 2, 1
-        // Aseguramos que esté encendido por si acaso
         if (counterInicio != null) counterInicio.SetActive(true);
 
         if (textCountdown != null) {
+            textCountdown.fontSize = 120; // Volvemos al tamaño gigante para los números
             textCountdown.text = "3";
             yield return new WaitForSeconds(1f);
             textCountdown.text = "2";
             yield return new WaitForSeconds(1f);
             textCountdown.text = "1";
             yield return new WaitForSeconds(1f);
-            textCountdown.text = "¡Empezar!";
+            textCountdown.text = "¡Encuentra la salida!";
             yield return new WaitForSeconds(0.8f);
             textCountdown.gameObject.SetActive(false);
         }
@@ -493,22 +509,43 @@ public class LaberintoManager : BaseActividad
         }
     }
 
+    private System.Collections.IEnumerator RoutineInicioDelayed()
+    {
+        yield return new WaitForSecondsRealtime(1f);
+        _inicioHabilitado = true;
+    }
+
     void ManejarInstruccionesYParpadeo()
     {
         bool eyesDetected = TobiiGazeProvider.Instance != null && TobiiGazeProvider.Instance.EyeDataValid;
+        // Solo consideramos que Tobii falla si el sensor no responde en absoluto
+        bool tobiiRealmenteFalla = EyeTracker.Instance == null || EyeTracker.Instance.LatestGazeData == null;
 
-        // 1. Mostrar instrucciones solo si se detectan ojos (OverlayInicio o OverlayInstructions)
-        if (overlayInstructions != null)
+        // 1. Lógica de aparición dinámica (solo si pasó el segundo inicial)
+        if (!_instruccionesMostradas && _inicioHabilitado)
         {
-            if (overlayInstructions.activeSelf != eyesDetected) {
-                overlayInstructions.SetActive(eyesDetected);
-                if (eyesDetected) SetOverlayText(overlayInstructions, "<b>¡Hemos detectado tus ojos!</b>\n\nPestañea o haz clic en el botón inferior para iniciar la aventura.");
+            if (overlayInstructions != null)
+            {
+                // Si Tobii falla, lo dejamos siempre encendido. Si funciona, es dinámico.
+                bool mostrarInstrucciones = tobiiRealmenteFalla || eyesDetected;
+                
+                if (overlayInstructions.activeSelf != mostrarInstrucciones) {
+                    overlayInstructions.SetActive(mostrarInstrucciones);
+                }
+                
+                if (mostrarInstrucciones) {
+                    if (eyesDetected) {
+                        SetOverlayText(overlayInstructions, "<b>¡Ojos detectados!</b>\n\nPestañea o haz clic en el botón inferior para iniciar la aventura.");
+                    } else {
+                        SetOverlayText(overlayInstructions, "<b>¿Preparado para la misión?</b>\n\nHaz clic en el botón inferior para comenzar.");
+                    }
+                }
             }
-        }
-        else if (overlayInicio != null)
-        {
-             // Si no hay overlay de instrucciones separado, usamos el de inicio
-             // (Aunque en este script suelen estar mapeados)
+
+            if (botonIniciar != null && !botonIniciar.gameObject.activeSelf) {
+                botonIniciar.gameObject.SetActive(true);
+                botonIniciar.interactable = true;
+            }
         }
 
         // 2. Lógica de parpadeo
@@ -540,17 +577,28 @@ public class LaberintoManager : BaseActividad
     {
         bool eyesDetected = TobiiGazeProvider.Instance != null && TobiiGazeProvider.Instance.EyeDataValid;
 
-        // Mostramos feedback en OverlayRetry si existe, o en OverlayFinal
-        GameObject targetOverlay = overlayRetry != null ? overlayRetry : overlayFinal;
+        // Si ya ganamos con 100, no queremos ni ver el overlay de reintento ni procesar parpadeos
+        bool tobiiRealmenteFalla = EyeTracker.Instance == null || EyeTracker.Instance.LatestGazeData == null;
 
-        if (targetOverlay != null)
+        if (overlayRetry != null)
         {
-            if (targetOverlay == overlayRetry && targetOverlay.activeSelf != eyesDetected) {
-                targetOverlay.SetActive(eyesDetected);
-            }
-            
-            if (eyesDetected) {
-                SetOverlayText(targetOverlay, "<b>¡Hemos detectado tus ojos!</b>\n\nPestañea para reintentar la misión.");
+            if (_permitirReintento) {
+                // Dinámico: Solo si hay ojos o si Tobii ha muerto
+                bool mostrarReintento = tobiiRealmenteFalla || eyesDetected;
+                
+                if (overlayRetry.activeSelf != mostrarReintento) {
+                    overlayRetry.SetActive(mostrarReintento);
+                }
+                
+                if (mostrarReintento) {
+                    if (eyesDetected) {
+                        SetOverlayText(overlayRetry, "<b>¡Ojos detectados!</b>\n\nPestañea para reintentar la misión.");
+                    } else {
+                        SetOverlayText(overlayRetry, "Pestañea o haz clic en el botón de abajo para volver a intentarlo");
+                    }
+                }
+            } else {
+                overlayRetry.SetActive(false);
             }
         }
 
@@ -560,13 +608,14 @@ public class LaberintoManager : BaseActividad
         }
         else
         {
-            if (_eyesWereDetected && _blinkTimer > 0.1f && _blinkTimer < 0.5f)
+                if (_permitirReintento && _eyesWereDetected && _blinkTimer > 0.1f && _blinkTimer < 0.5f)
             {
                 _eyesWereDetected = false;
+                _permitirReintento = false; // Bloqueamos para evitar dobles reinicios
                 _blinkTimer = 0;
                 
                 // Mostrar mensaje de confirmación
-                SetOverlayText(targetOverlay, "<b>¡Pestañeo detectado!</b>\n\nReiniciando misión...");
+                if (overlayRetry != null) SetOverlayText(overlayRetry, "<b>¡Pestañeo detectado!</b>\n\nReiniciando misión...");
                 
                 Invoke("ReiniciarJuego", 0.5f);
             }
@@ -714,7 +763,7 @@ public class LaberintoManager : BaseActividad
         }
 
         ConfigurarVisibilidad(inicio: false, juego: false, final: true);
-        if (botonReload != null) botonReload.SetActive(true); // Permitir reintento
+        // El botón se manejará en la corutina de feedback
         MostrarFeedbackFinal("Has recorrido gran parte del laberinto. \n¡Sigue practicando para ser un maestro!");
     }
 
@@ -729,23 +778,26 @@ public class LaberintoManager : BaseActividad
         }
 
         ConfigurarVisibilidad(inicio: false, juego: false, final: true);
-        if (botonReload != null) botonReload.SetActive(true); // Siempre mostrar
+        // El botón se manejará en la corutina de feedback
         
         // LANZAR CONFETI UI (Garantizado)
         IniciarConfetiGarantizado();
+        if (overlayRetry != null) overlayRetry.SetActive(false);
         
+        // Puntuación REAL (ya no forzamos 100)
         MostrarFeedbackFinal($"Has logrado salir del laberinto en {tiempoUsado:F0} segundos.");
     }
  
-    void MostrarFeedbackFinal(string mensaje)
+    void MostrarFeedbackFinal(string mensaje, bool forzar100 = false)
     {
         float tiempoUsado = tiempoLimite - _tiempoRestante;
-        
-        // CÁLCULO DE PUNTUACIÓN
+
+        // CÁLCULO DE PUNTUACIÓN (Solo si no forzamos 100)
         float penalizacionTiempo = Mathf.Max(0, tiempoUsado - tiempoMinimoResolucion) * 0.8f;
         float puntaje = 100f - (_conteoErrores * 5f) - penalizacionTiempo;
         puntaje = Mathf.Clamp(puntaje, 0, 100);
-        int finalScore = Mathf.FloorToInt(puntaje);
+
+        int finalScore = forzar100 ? 100 : Mathf.FloorToInt(puntaje);
 
         // DETERMINAR TÍTULO Y MENSAJE DINÁMICO
         string tituloDinamico = "¡Misión Cumplida!";
@@ -795,11 +847,33 @@ public class LaberintoManager : BaseActividad
             barErrors.fillAmount = precision;
         }
 
-        // Lógica del Botón Mejorar Puntuación (Siempre visible)
-        if (botonReload != null) {
-            botonReload.SetActive(true);
-            // Solo mostrar mensaje de pestañeo si estamos usando Tobii activamente
-            if (overlayRetry != null) overlayRetry.SetActive(usarValidacionOjos);
+        // El control de botones se delega a una corutina para el retraso de 3s
+        StartCoroutine(RoutineRetrasoBotones(finalScore));
+    }
+
+    private System.Collections.IEnumerator RoutineRetrasoBotones(int score)
+    {
+        // Ocultamos inicialmente para la "calma" post-juego
+        _permitirReintento = false;
+        if (botonReload != null) botonReload.SetActive(false);
+        if (overlayRetry != null) overlayRetry.SetActive(false);
+
+        // Si ha sacado 100, forzamos el apagado y bloqueamos cualquier reintento
+        if (score >= 100) {
+            _permitirReintento = false;
+            if (botonReload != null) botonReload.SetActive(false);
+            if (overlayRetry != null) overlayRetry.SetActive(false);
+            yield break; 
+        }
+
+        // Si ha sacado menos, esperamos 3 segundos de "reflexión"
+        yield return new WaitForSeconds(3f);
+
+        _permitirReintento = true;
+        if (botonReload != null) botonReload.SetActive(true);
+        // Sincronizamos la aparición del mensaje con el botón
+        if (overlayRetry != null) {
+            overlayRetry.SetActive(true);
         }
     }
 
@@ -816,7 +890,8 @@ public class LaberintoManager : BaseActividad
     }
 
     void CrearEstrellaUI() {
-        GameObject star = new GameObject("StarUI");
+        if (overlayFinal == null) return;
+        GameObject star = new GameObject("StarUI_Confetti"); // Nombre explícito y nunca vacío
         star.layer = 5; // CAPA 5 = UI (Vital para que se vea)
         star.transform.SetParent(overlayFinal.transform, false);
         star.transform.SetAsLastSibling();
@@ -843,6 +918,4 @@ public class LaberintoManager : BaseActividad
         }
         if (rt != null) Destroy(rt.gameObject);
     }
-
-    // Nota: El método BuscarObjetoInactivo ahora se hereda de BaseActividad
 }

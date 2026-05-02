@@ -26,6 +26,8 @@ public class ActivitiesManager : MonoBehaviour
 
     void Start()
     {
+        if (GestorPaciente.Instance == null || !GestorPaciente.Instance.EsSesionValida()) return;
+
         ConfigurarBoton(btnLaberinto, () => SceneManager.LoadScene("LaberintoVisual"));
         ConfigurarBoton(btnCarrera, () => SceneManager.LoadScene("CarreraOcular"));
         ConfigurarBoton(btnExplosion, () => SceneManager.LoadScene("ExplosionGlobos"));

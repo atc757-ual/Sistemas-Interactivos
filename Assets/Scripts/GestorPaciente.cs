@@ -56,6 +56,7 @@ public class GestorPaciente : MonoBehaviour
     public List<DatosPaciente> listaPacientes = new List<DatosPaciente>();
     
     private string rutaArchivo;
+    private const string KEY_DEV_DNI = "DevLastDNI";
 
     void Awake()
     {
@@ -75,7 +76,9 @@ public class GestorPaciente : MonoBehaviour
 
     public DatosPaciente BuscarPacientePorDNI(string dni)
     {
-        return listaPacientes.Find(p => p.dni == dni);
+        if (string.IsNullOrEmpty(dni)) return null;
+        string normalizedDni = dni.ToUpper().Trim();
+        return listaPacientes.Find(p => p.dni.ToUpper().Trim() == normalizedDni);
     }
 
     public void IniciarSesion(DatosPaciente paciente)
@@ -83,12 +86,56 @@ public class GestorPaciente : MonoBehaviour
         pacienteActual = paciente;
         inicioSesion = System.DateTime.Now;
         haCalibradoEnEstaSesion = false; // Reset cada vez que inicia sesión nueva
+        
+#if UNITY_EDITOR
+        PlayerPrefs.SetString(KEY_DEV_DNI, paciente.dni);
+        PlayerPrefs.Save();
+#endif
         Debug.Log($"Sesión iniciada para {paciente.nombre} a las {inicioSesion}");
     }
 
     public bool EsSesionValida()
     {
-        if (pacienteActual == null) return false;
+        if (pacienteActual == null) 
+        {
+#if UNITY_EDITOR
+            // Intentamos recuperar la última sesión del editor
+            string lastDni = PlayerPrefs.GetString(KEY_DEV_DNI, "");
+            if (!string.IsNullOrEmpty(lastDni))
+            {
+                CargarTodosLosPacientes(); // Asegurar datos frescos
+                DatosPaciente p = BuscarPacientePorDNI(lastDni.Trim());
+                if (p != null)
+                {
+                    Debug.Log($"<color=cyan>[GestorPaciente] SESIÓN RESTAURADA: {p.nombre} ({p.dni}) - {p.historialPartidas.Count} partidas encontradas.</color>");
+                    IniciarSesion(p);
+                    // haCalibradoEnEstaSesion = false; // Por defecto es false al iniciar
+                    return true;
+                }
+            }
+
+            // 3. Si llegamos aquí y no hay paciente, forzamos ir al Login
+            if (pacienteActual == null)
+            {
+                Debug.Log("<color=red>[GestorPaciente] SESIÓN NO ENCONTRADA. Redirigiendo a Login...</color>");
+                // Solo redirigimos si no estamos ya en la escena de Login para evitar bucles
+                if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "Login")
+                {
+                    UnityEngine.SceneManagement.SceneManager.LoadScene("Login");
+                }
+                return false;
+            }
+
+            return true;
+#else
+            // En build final, si no hay sesión, vamos a Login
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "Login")
+            {
+                UnityEngine.SceneManagement.SceneManager.LoadScene("Login");
+            }
+            return false;
+#endif
+        }
         
         System.TimeSpan transcurrido = System.DateTime.Now - inicioSesion;
         return transcurrido.TotalMinutes < TIEMPO_SESION_MINUTOS;
@@ -98,6 +145,11 @@ public class GestorPaciente : MonoBehaviour
     {
         pacienteActual = null;
         haCalibradoEnEstaSesion = false;
+        
+#if UNITY_EDITOR
+        PlayerPrefs.DeleteKey(KEY_DEV_DNI);
+        PlayerPrefs.Save();
+#endif
         Debug.Log("Sesión cerrada y datos temporales borrados.");
     }
 
@@ -207,7 +259,7 @@ public class GestorPaciente : MonoBehaviour
 
     public void GuardarTodosLosDatos()
     {
-        string json = JsonUtility.ToJson(new Wrapper<List<DatosPaciente>> { items = listaPacientes }, true);
+        string json = JsonUtility.ToJson(new WrapperPacientes { items = listaPacientes }, true);
         File.WriteAllText(rutaArchivo, json);
         Debug.Log($"Datos guardados en: {rutaArchivo}");
     }
@@ -220,30 +272,62 @@ public class GestorPaciente : MonoBehaviour
 
     private void CargarTodosLosPacientes()
     {
-        Debug.Log("[GestorPaciente] Intentando cargar desde: " + rutaArchivo);
+        if (string.IsNullOrEmpty(rutaArchivo))
+            rutaArchivo = Path.Combine(Application.persistentDataPath, "pacientes_data.json");
+
+        Debug.Log("[GestorPaciente] Cargando datos desde: " + rutaArchivo);
         if (File.Exists(rutaArchivo))
         {
-            string json = File.ReadAllText(rutaArchivo);
-            Debug.Log("[GestorPaciente] JSON leído: " + json.Length + " caracteres.");
-            Wrapper<List<DatosPaciente>> wrapper = JsonUtility.FromJson<Wrapper<List<DatosPaciente>>>(json);
-            if (wrapper != null && wrapper.items != null)
+            try 
             {
-                listaPacientes = wrapper.items;
-                Debug.Log("[GestorPaciente] Pacientes cargados: " + listaPacientes.Count);
+                string json = File.ReadAllText(rutaArchivo);
+                Debug.Log($"[GestorPaciente] JSON leído ({json.Length} chars). Primeros 100: {(json.Length > 100 ? json.Substring(0, 100) : json)}");
+                
+                WrapperPacientes wrapper = JsonUtility.FromJson<WrapperPacientes>(json);
+                if (wrapper != null && wrapper.items != null)
+                {
+                    Dictionary<string, DatosPaciente> mapaPacientes = new Dictionary<string, DatosPaciente>();
+                    foreach (var p in wrapper.items)
+                    {
+                        if (string.IsNullOrEmpty(p.dni)) continue;
+                        string key = p.dni.ToUpper().Trim();
+                        
+                        if (mapaPacientes.ContainsKey(key))
+                        {
+                            Debug.Log($"<color=orange>[GestorPaciente] FUSIONANDO: DNI {key} tenía {mapaPacientes[key].historialPartidas.Count}, sumando {p.historialPartidas.Count} más.</color>");
+                            foreach (var partida in p.historialPartidas)
+                            {
+                                if (!mapaPacientes[key].historialPartidas.Exists(ex => ex.fecha == partida.fecha && ex.juego == partida.juego))
+                                {
+                                    mapaPacientes[key].historialPartidas.Add(partida);
+                                }
+                            }
+                            mapaPacientes[key].puntuacionTotal = Mathf.Max(mapaPacientes[key].puntuacionTotal, p.puntuacionTotal);
+                        }
+                        else
+                        {
+                            mapaPacientes[key] = p;
+                        }
+                    }
+                    listaPacientes = new List<DatosPaciente>(mapaPacientes.Values);
+                    Debug.Log($"<color=green>[GestorPaciente] Carga completa: {listaPacientes.Count} pacientes únicos cargados.</color>");
+                }
             }
-            else {
-                Debug.LogWarning("[GestorPaciente] Wrapper o items nulos tras deserializar.");
+            catch (System.Exception e)
+            {
+                Debug.LogError("[GestorPaciente] Error crítico al cargar JSON: " + e.Message);
             }
         }
         else
         {
-            Debug.LogWarning("[GestorPaciente] No se encontró el archivo de datos.");
+            Debug.LogWarning("[GestorPaciente] No existe archivo JSON. Se creará uno nuevo al guardar.");
+            listaPacientes = new List<DatosPaciente>();
         }
     }
 
     [System.Serializable]
-    class Wrapper<T>
+    class WrapperPacientes
     {
-        public T items;
+        public List<DatosPaciente> items;
     }
 }

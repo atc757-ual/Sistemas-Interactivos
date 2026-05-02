@@ -77,7 +77,9 @@ public class LoginManager : MonoBehaviour
             campoDNI.onValueChanged.RemoveAllListeners();
             campoDNI.text = "";
             campoDNI.onValueChanged.AddListener(ValidarDNI);
-            campoDNI.ActivateInputField();
+            
+            // Forzar foco con un pequeño retraso para asegurar que el EventSystem esté listo
+            StartCoroutine(RoutineEnfocarDNI());
         }
 
         if (campoNombre != null) {
@@ -106,6 +108,15 @@ public class LoginManager : MonoBehaviour
             var salir = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
             salir.callback.AddListener(_ => MostrarAyuda(false));
             trigger.triggers.Add(salir);
+        }
+    }
+
+    IEnumerator RoutineEnfocarDNI()
+    {
+        yield return null; // Esperar un frame
+        if (campoDNI != null) {
+            campoDNI.Select();
+            campoDNI.ActivateInputField();
         }
     }
 

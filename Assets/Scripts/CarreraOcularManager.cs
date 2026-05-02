@@ -29,6 +29,7 @@ public class CarreraOcularManager : BaseActividad
     public GameObject overlayResult;
     public TMP_Text titleRes;
     public TMP_Text subRes;
+    public TMP_Text subDetail;
     public TMP_Text puntajeText;
     public TMP_Text colisionesText;
     public TMP_Text vidasRestantesText;
@@ -38,9 +39,9 @@ public class CarreraOcularManager : BaseActividad
     public float velocidadObstaculos = 400f;
     public float velocidadFondo = 50f;
     public float velocidadAvance = 50f; // Velocidad de avance hacia la derecha
-    public float alturaArriba = 250f;
+    public float alturaArriba = 650f;   // Aumentado para mayor rango
     public float alturaCentro = 0f;
-    public float alturaAbajo = -250f;
+    public float alturaAbajo = -650f;  // Aumentado para mayor rango
     
     [Header("Ajustes de Spawn")]
     public GameObject prefabObstaculo;
@@ -58,6 +59,7 @@ public class CarreraOcularManager : BaseActividad
     private List<RectTransform> _bgSegments = new List<RectTransform>();
     private float _spawnTimer = 0f;
     private bool _juegoFinalizado = false;
+    private bool _permitirReintento = false;
     private bool _enConteo = false;
     private int _colisiones = 0;
     private bool _timerIniciado = false;
@@ -68,9 +70,12 @@ public class CarreraOcularManager : BaseActividad
     private float _blinkTimer = 0f;
     private bool _eyesWereDetected = false;
     private bool _isStarting = false;
+    private bool _inicioHabilitado = false;
 
     protected override void Start()
     {
+        if (GestorPaciente.Instance == null || !GestorPaciente.Instance.EsSesionValida()) return;
+
 #if UNITY_EDITOR
         usarValidacionOjos = false; // En el Editor desactivamos el bloqueo para agilizar las pruebas
 #endif
@@ -103,7 +108,21 @@ public class CarreraOcularManager : BaseActividad
         // Bypass de validación de ojos para modo ratón
         if (botonIniciar != null) {
             botonIniciar.interactable = true;
+            botonIniciar.gameObject.SetActive(false);
         }
+
+        StartCoroutine(RoutineInicioDelayed());
+    }
+
+    private System.Collections.IEnumerator RoutineInicioDelayed()
+    {
+        _inicioHabilitado = false;
+        if (botonIniciar != null) botonIniciar.gameObject.SetActive(false);
+        
+        yield return new WaitForSecondsRealtime(1f);
+        
+        _inicioHabilitado = true;
+        if (botonIniciar != null) botonIniciar.gameObject.SetActive(true);
     }
 
     void VincularUI()
@@ -149,6 +168,10 @@ public class CarreraOcularManager : BaseActividad
             if (subRes == null) {
                 var t = BuscarObjetoInactivo("SubRes");
                 if (t != null) subRes = t.GetComponent<TMP_Text>();
+            }
+            if (subDetail == null) {
+                var t = BuscarObjetoInactivo("SubDetail");
+                if (t != null) subDetail = t.GetComponent<TMP_Text>();
             }
             if (colisionesText == null) {
                 var t = BuscarObjetoInactivo("Colisiones");
@@ -308,7 +331,6 @@ public class CarreraOcularManager : BaseActividad
         }
         else if (_juegoFinalizado)
         {
-            // Solo si no alcanzó el puntaje perfecto (opcional, aquí lo dejamos siempre activo para reintento)
             ManejarReintentoPorParpadeo();
         }
 
@@ -500,6 +522,9 @@ public class CarreraOcularManager : BaseActividad
 
         if (nuevo == null) return;
 
+        // --- EFECTO VISUAL: COLA DE FUEGO ---
+        AñadirColaDeFuego(nuevo);
+
         RectTransform rt = nuevo.GetComponent<RectTransform>();
         
         // --- MAYOR DIVERSIFICACIÓN (Dispersión) ---
@@ -515,6 +540,66 @@ public class CarreraOcularManager : BaseActividad
 
         rt.anchoredPosition = new Vector2(Screen.width + xJitter, yAleatorio);
         _obstaculosActivos.Add(rt);
+    }
+
+    private void AñadirColaDeFuego(GameObject obs)
+    {
+        // Creamos un objeto hijo para la cola
+        GameObject trailObj = new GameObject("FuegoTrail");
+        trailObj.transform.SetParent(obs.transform, false);
+        trailObj.transform.localPosition = Vector3.zero; 
+        trailObj.transform.localRotation = Quaternion.identity; 
+
+        // Añadimos el sistema de partículas
+        ParticleSystem ps = trailObj.AddComponent<ParticleSystem>();
+        var main = ps.main;
+        main.startLifetime = 0.5f;
+        main.startSpeed = 0f; // Usaremos velocity over lifetime para mayor control
+        main.startSize = 60f;
+        main.startColor = new ParticleSystem.MinMaxGradient(new Color(1, 0.5f, 0), Color.red);
+        main.simulationSpace = ParticleSystemSimulationSpace.Local;
+        main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+        main.maxParticles = 50;
+
+        var emission = ps.emission;
+        emission.rateOverTime = 35;
+
+        // Desactivamos Shape para emitir desde el centro y controlar con velocidad
+        var shape = ps.shape;
+        shape.enabled = false;
+
+        // Forzamos velocidad hacia la derecha (eje X positivo)
+        var velocity = ps.velocityOverLifetime;
+        velocity.enabled = true;
+        velocity.x = new ParticleSystem.MinMaxCurve(180f, 300f); 
+        velocity.y = new ParticleSystem.MinMaxCurve(-20f, 20f);
+        velocity.space = ParticleSystemSimulationSpace.Local;
+
+        var colorOverLifetime = ps.colorOverLifetime;
+        colorOverLifetime.enabled = true;
+        Gradient gradient = new Gradient();
+        gradient.SetKeys(
+            new GradientColorKey[] { new GradientColorKey(Color.white, 0.0f), new GradientColorKey(Color.yellow, 0.3f), new GradientColorKey(Color.red, 1.0f) },
+            new GradientAlphaKey[] { new GradientAlphaKey(1.0f, 0.0f), new GradientAlphaKey(0.0f, 1.0f) }
+        );
+        colorOverLifetime.color = gradient;
+
+        var sizeOverLifetime = ps.sizeOverLifetime;
+        sizeOverLifetime.enabled = true;
+        sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1.0f, 0.1f);
+
+        // Configurar el renderer para UI
+        var renderer = ps.GetComponent<ParticleSystemRenderer>();
+        if (renderer != null) {
+            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            renderer.sortingLayerName = "UI";
+            renderer.sortingOrder = 30000; // Valor extremo para forzar visibilidad
+            
+            // Material Sprites/Default es el más seguro en UI
+            renderer.material = new Material(Shader.Find("Sprites/Default"));
+        }
+
+        ps.Play();
     }
 
     void RecibirDano()
@@ -658,6 +743,9 @@ public class CarreraOcularManager : BaseActividad
 
         if (overlayResult != null) overlayResult.SetActive(true);
         
+        // Iniciar flujo de reintento sincronizado
+        StartCoroutine(RoutineRetrasoBotones(finalScore));
+        
         // Ocultar la luna al terminar
         if (luna != null) luna.SetActive(false);
         
@@ -700,7 +788,7 @@ public class CarreraOcularManager : BaseActividad
     {
         bool eyesDetected = TobiiGazeProvider.Instance != null && TobiiGazeProvider.Instance.EyeDataValid;
 
-        if (overlayInicio != null && textoMensajeInicio != null)
+        if (overlayInicio != null && textoMensajeInicio != null && _inicioHabilitado)
         {
             if (textoMensajeInicio.gameObject.activeSelf != eyesDetected) {
                 textoMensajeInicio.gameObject.SetActive(eyesDetected);
@@ -732,12 +820,28 @@ public class CarreraOcularManager : BaseActividad
     void ManejarReintentoPorParpadeo()
     {
         bool eyesDetected = TobiiGazeProvider.Instance != null && TobiiGazeProvider.Instance.EyeDataValid;
+        bool tobiiRealmenteFalla = EyeTracker.Instance == null || EyeTracker.Instance.LatestGazeData == null;
 
-        if (overlayResult != null && subRes != null)
+        if (subDetail != null)
         {
-            // Nota: Aquí usamos subRes para el mensaje reactivo
-            if (eyesDetected) {
-                SetOverlayText(subRes.gameObject, "<b>¡Hemos detectado tus ojos!</b>\n\nPestañea para reintentar la misión.");
+            if (_permitirReintento) {
+                // Dinámico: Solo si hay ojos o si Tobii ha muerto
+                bool mostrarReintento = tobiiRealmenteFalla || eyesDetected;
+                
+                if (subDetail.gameObject.activeSelf != mostrarReintento) {
+                    subDetail.gameObject.SetActive(mostrarReintento);
+                }
+                
+                if (mostrarReintento) {
+                    if (eyesDetected) {
+                        subDetail.text = "<b>¡Ojos detectados!</b>\n\nPestañea para reintentar la misión.";
+                    } else {
+                        subDetail.text = "¡Hemos detectado tus ojos! Pestañea o haz clic en el botón inferior para iniciar la aventura.";
+                    }
+                }
+            } else {
+                // Durante los 3s de retraso, subDetail suele estar apagado mientras se lee subRes
+                if (subDetail.gameObject.activeSelf) subDetail.gameObject.SetActive(false);
             }
         }
 
@@ -747,11 +851,17 @@ public class CarreraOcularManager : BaseActividad
         }
         else
         {
-            if (_eyesWereDetected && _blinkTimer > 0.1f && _blinkTimer < 0.5f)
+            if (_permitirReintento && _eyesWereDetected && _blinkTimer > 0.1f && _blinkTimer < 0.5f)
             {
                 _eyesWereDetected = false;
                 _blinkTimer = 0;
-                SetOverlayText(subRes.gameObject, "<b>¡Pestañeo detectado!</b>\n\nReiniciando misión...");
+                
+                if (subRes != null) SetOverlayText(subRes.gameObject, "<b>¡Pestañeo detectado!</b>\n\nReiniciando misión...");
+                
+                // Ocultar elementos para feedback inmediato
+                if (botonReiniciar != null) botonReiniciar.gameObject.SetActive(false);
+                if (subRes != null) subRes.gameObject.SetActive(false);
+
                 Invoke("ReiniciarJuego", 0.5f);
             }
             else
@@ -760,6 +870,20 @@ public class CarreraOcularManager : BaseActividad
                 _blinkTimer = 0;
             }
         }
+    }
+
+    private System.Collections.IEnumerator RoutineRetrasoBotones(int score)
+    {
+        _permitirReintento = false;
+        if (botonReiniciar != null) botonReiniciar.gameObject.SetActive(false);
+
+        if (score >= 100) yield break;
+
+        yield return new WaitForSeconds(3f);
+
+        _permitirReintento = true;
+        if (botonReiniciar != null) botonReiniciar.gameObject.SetActive(true);
+        if (subRes != null) subRes.gameObject.SetActive(true);
     }
 
     void SetOverlayText(GameObject obj, string message)

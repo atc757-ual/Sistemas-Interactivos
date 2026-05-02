@@ -129,6 +129,8 @@ public class Calibracion : MonoBehaviour
 
     void Start()
     {
+        if (GestorPaciente.Instance == null || !GestorPaciente.Instance.EsSesionValida()) return;
+
         AutoVincular();
         
         if (_canvasPrincipal != null) {

@@ -5,6 +5,7 @@ using TMPro;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Tobii.Research.Unity;
 
 public class ExplosionGlobosManager : MonoBehaviour
 {
@@ -40,6 +41,7 @@ public class ExplosionGlobosManager : MonoBehaviour
     [SerializeField] Button retryBtn; 
     [SerializeField] Image flashDano;
     [SerializeField] RectTransform heartsContainer;
+    [SerializeField] GameObject subresText;
     private List<Image> _lifeIcons = new();
 
     private GameState _state;
@@ -52,6 +54,9 @@ public class ExplosionGlobosManager : MonoBehaviour
     // Blink detection
     private float _blinkTimer = 0f;
     private bool  _eyesWereDetected = false;
+    private float _resultsDelayTimer = 0f;
+    private bool  _permitirReintento = false;
+    private bool  _inicioHabilitado = false;
 
     void Start()
     {
@@ -69,6 +74,20 @@ public class ExplosionGlobosManager : MonoBehaviour
         if (volverBtn) volverBtn.onClick.AddListener(() => SceneManager.LoadScene("Activities"));
         
         SetState(GameState.Inicio);
+        StartCoroutine(RoutineInicioDelayed());
+    }
+
+    private System.Collections.IEnumerator RoutineInicioDelayed()
+    {
+        _inicioHabilitado = false;
+        if (startBtn != null) startBtn.gameObject.SetActive(false);
+        if (overlayInstructions != null) overlayInstructions.SetActive(false);
+        
+        yield return new WaitForSeconds(1f);
+        
+        _inicioHabilitado = true;
+        if (startBtn != null) startBtn.gameObject.SetActive(true);
+        // NO activamos el overlay aquí, dejamos que ManejarInstruccionesYParpadeo lo haga según Tobii
     }
 
     void ConfigurarCursorLaser(GameObject cursor)
@@ -114,11 +133,18 @@ public class ExplosionGlobosManager : MonoBehaviour
         if (canvas != null)
         {
             if (overlayInicio == null) overlayInicio = canvas.transform.Find("OverlayInicio")?.gameObject;
-            if (overlayInstructions == null) overlayInstructions = canvas.transform.Find("OverlayInstructions")?.gameObject;
-            if (overlayRetry == null) overlayRetry = canvas.transform.Find("OverlayRetry")?.gameObject;
+            if (overlayInstructions == null) {
+                overlayInstructions = FindInChildRecursive(canvas.transform, "OverlayInstructions")?.gameObject
+                                   ?? FindInChildRecursive(canvas.transform, "Instruction")?.gameObject
+                                   ?? FindInChildRecursive(canvas.transform, "Instructions")?.gameObject;
+            }
+            if (overlayRetry == null) {
+                overlayRetry = FindInChildRecursive(canvas.transform, "OverlayRetry")?.gameObject
+                            ?? FindInChildRecursive(canvas.transform, "Retry")?.gameObject;
+            }
             // Acepta tanto "OverlayFinal" como "OverlayResult" como nombre del overlay de resultados
-            if (overlayFinal == null) overlayFinal = canvas.transform.Find("OverlayFinal")?.gameObject
-                                                  ?? canvas.transform.Find("OverlayResult")?.gameObject;
+            if (overlayFinal == null) overlayFinal = canvas.transform.Find("OverlayResult")?.gameObject
+                                                  ?? canvas.transform.Find("OverlayFinal")?.gameObject;
             if (playerCursor == null) playerCursor = canvas.transform.Find("PlayerCursor")?.gameObject;
             
             // Creamos un clon oculto para usar como plantilla ANTES de tocar el cursor
@@ -164,7 +190,12 @@ public class ExplosionGlobosManager : MonoBehaviour
                 textoContador = FindInChildRecursive(overlayInicio.transform, "TextoContador")?.GetComponent<TMP_Text>();
             
             if (retryBtn == null && overlayFinal != null)
-                retryBtn = FindInChildRecursive(overlayFinal.transform, "BotonReload")?.GetComponent<Button>();
+                retryBtn = FindInChildRecursive(overlayFinal.transform, "BtnAgain")?.GetComponent<Button>()
+                         ?? FindInChildRecursive(overlayFinal.transform, "btnAgain")?.GetComponent<Button>()
+                         ?? FindInChildRecursive(overlayFinal.transform, "BotonReload")?.GetComponent<Button>();
+
+            if (subresText == null && overlayFinal != null)
+                subresText = FindInChildRecursive(overlayFinal.transform, "Subres")?.gameObject;
 
             if (counterRetry == null && overlayFinal != null)
                 counterRetry = FindInChildRecursive(overlayFinal.transform, "CounterRetry")?.GetComponent<TMP_Text>();
@@ -223,10 +254,16 @@ public class ExplosionGlobosManager : MonoBehaviour
     {
         ClearItems();
         if (overlayRetry != null) overlayRetry.SetActive(false);
+        
+        // Ocultar botones y textos de reintento inmediatamente
+        if (retryBtn != null) retryBtn.gameObject.SetActive(false);
+        if (subresText != null) subresText.SetActive(false);
+        
         StartCoroutine(RutinaCountdown(overlayFinal, counterRetry));
     }
 
-    IEnumerator RutinaCountdown(GameObject overlay, TMP_Text counter)
+
+    System.Collections.IEnumerator RutinaCountdown(GameObject overlay, TMP_Text counter)
     {
         if (overlay == null) { IniciarJuego(); yield break; }
 
@@ -258,14 +295,40 @@ public class ExplosionGlobosManager : MonoBehaviour
 
     void ManejarInstruccionesYParpadeo()
     {
-        bool eyesDetected = TobiiGazeProvider.Instance != null && TobiiGazeProvider.Instance.EyeDataValid;
+        // Si no usamos eye tracking, las instrucciones deben estar siempre visibles (si el juego no ha empezado)
+        if (!useEyeTracking)
+        {
+            if (overlayInstructions != null) overlayInstructions.SetActive(_inicioHabilitado);
+            return;
+        }
 
-        // Mostrar instrucciones solo si se detectan ojos
+        bool eyesDetected = TobiiGazeProvider.Instance != null && TobiiGazeProvider.Instance.EyeDataValid;
+        bool tobiiRealmenteFalla = EyeTracker.Instance == null || EyeTracker.Instance.LatestGazeData == null;
+
+        // Mostrar instrucciones solo si se detectan ojos y pasó el delay inicial
         if (overlayInstructions != null)
         {
-            if (overlayInstructions.activeSelf != eyesDetected) {
-                overlayInstructions.SetActive(eyesDetected);
-                if (eyesDetected) SetOverlayText(overlayInstructions, "<b>¡Hemos detectado tus ojos!</b>\n\nPestañea o haz clic en el botón inferior para iniciar la aventura.");
+            if (_inicioHabilitado)
+            {
+                // Dinámico: Solo si hay ojos o si Tobii ha muerto (fallback ratón)
+                bool mostrarInstrucciones = tobiiRealmenteFalla || eyesDetected;
+                
+                if (overlayInstructions.activeSelf != mostrarInstrucciones) {
+                    overlayInstructions.SetActive(mostrarInstrucciones);
+                }
+                
+                if (mostrarInstrucciones) {
+                    if (eyesDetected) {
+                        SetOverlayText(overlayInstructions, "<b>¡Ojos detectados!</b>\n\nPestañea o haz clic en el botón inferior para iniciar la aventura.");
+                    } else {
+                        SetOverlayText(overlayInstructions, "<b>¿Preparado para la misión?</b>\n\nHaz clic en el botón inferior para comenzar.");
+                    }
+                }
+            }
+            else
+            {
+                // Delay inicial: siempre oculto
+                if (overlayInstructions.activeSelf) overlayInstructions.SetActive(false);
             }
         }
 
@@ -297,13 +360,39 @@ public class ExplosionGlobosManager : MonoBehaviour
 
     void ManejarReintentoPorParpadeo()
     {
+        // Si no usamos eye tracking, el reintento debe estar visible si se permite (para ratón)
+        if (!useEyeTracking)
+        {
+            if (overlayRetry != null) overlayRetry.SetActive(_permitirReintento);
+            if (subresText != null) subresText.SetActive(_permitirReintento);
+            return;
+        }
+
         bool eyesDetected = TobiiGazeProvider.Instance != null && TobiiGazeProvider.Instance.EyeDataValid;
+        bool tobiiRealmenteFalla = EyeTracker.Instance == null || EyeTracker.Instance.LatestGazeData == null;
 
         if (overlayRetry != null)
         {
-            if (overlayRetry.activeSelf != eyesDetected) {
-                overlayRetry.SetActive(eyesDetected);
-                if (eyesDetected) SetOverlayText(overlayRetry, "<b>¡Hemos detectado tus ojos!</b>\n\nPestañea para reintentar la misión.");
+            if (_permitirReintento) {
+                bool mostrarReintento = tobiiRealmenteFalla || eyesDetected;
+                if (overlayRetry.activeSelf != mostrarReintento) {
+                    overlayRetry.SetActive(mostrarReintento);
+                }
+                
+                if (subresText != null && subresText.activeSelf != mostrarReintento) {
+                    subresText.SetActive(mostrarReintento);
+                }
+
+                if (mostrarReintento) {
+                    if (eyesDetected) {
+                        SetOverlayText(overlayRetry, "<b>¡Ojos detectados!</b>\n\nPestañea para reintentar la misión.");
+                    } else {
+                        SetOverlayText(overlayRetry, "Pestañea o haz clic en el botón de abajo para volver a intentarlo");
+                    }
+                }
+            } else {
+                overlayRetry.SetActive(false);
+                if (subresText != null) subresText.SetActive(false);
             }
         }
 
@@ -313,14 +402,18 @@ public class ExplosionGlobosManager : MonoBehaviour
         }
         else
         {
-            if (_eyesWereDetected && _blinkTimer > 0.1f && _blinkTimer < 0.5f)
+            if (_permitirReintento && _eyesWereDetected && _blinkTimer > 0.1f && _blinkTimer < 0.5f)
             {
                 _eyesWereDetected = false;
                 _blinkTimer = 0;
                 
                 // Mostrar mensaje de confirmación
-                SetOverlayText(overlayRetry, "<b>¡Pestañeo detectado!</b>\n\nReiniciando misión...");
+                if (overlayRetry != null) SetOverlayText(overlayRetry, "<b>¡Pestañeo detectado!</b>\n\nReiniciando misión...");
                 
+                // Ocultar botones de la UI de resultados inmediatamente para dar paso a la transición
+                if (retryBtn != null) retryBtn.gameObject.SetActive(false);
+                if (subresText != null) subresText.SetActive(false);
+
                 Invoke("ReiniciarJuego", 0.5f); // Breve delay para leer el mensaje
             }
             else
@@ -342,7 +435,6 @@ public class ExplosionGlobosManager : MonoBehaviour
     }
 
     void Update()
-
     {
         if (_state == GameState.Inicio)
         {
@@ -352,7 +444,7 @@ public class ExplosionGlobosManager : MonoBehaviour
 
         if (_state == GameState.Results)
         {
-            if (_finalScore < 100f) ManejarReintentoPorParpadeo();
+            ManejarReintentoPorParpadeo();
             return;
         }
 
@@ -422,8 +514,16 @@ public class ExplosionGlobosManager : MonoBehaviour
             overlayInicio.SetActive(state == GameState.Inicio);
             if (state == GameState.Inicio)
             {
-                foreach (Transform child in overlayInicio.transform) child.gameObject.SetActive(true);
+                foreach (Transform child in overlayInicio.transform) {
+                    // No activar automáticamente el overlay de instrucciones, lo gestiona el Update
+                    if (overlayInstructions != null && child.gameObject == overlayInstructions) continue;
+                    child.gameObject.SetActive(true);
+                }
                 if (textoContador) textoContador.gameObject.SetActive(false);
+            }
+            else
+            {
+                if (overlayInstructions != null) overlayInstructions.SetActive(false);
             }
         }
         if (overlayFinal) 
@@ -431,8 +531,24 @@ public class ExplosionGlobosManager : MonoBehaviour
             overlayFinal.SetActive(state == GameState.Results);
             if (state == GameState.Results)
             {
-                foreach (Transform child in overlayFinal.transform) child.gameObject.SetActive(true);
+                // Mostramos todos los hijos excepto los que gestionamos manualmente según el tiempo
+                foreach (Transform child in overlayFinal.transform) 
+                {
+                    bool isManaged = (child.gameObject == subresText) || (retryBtn != null && child.gameObject == retryBtn.gameObject) || (counterRetry != null && child.gameObject == counterRetry.gameObject) || (overlayRetry != null && child.gameObject == overlayRetry);
+                    if (!isManaged) child.gameObject.SetActive(true);
+                }
+                
                 if (counterRetry) counterRetry.gameObject.SetActive(false);
+                
+                // Aplicar visibilidad según si ya pasaron los 5 segundos
+                bool showRetry = _permitirReintento; // Usar el flag unificado
+                if (retryBtn) retryBtn.gameObject.SetActive(showRetry);
+                if (subresText) subresText.SetActive(showRetry);
+                if (overlayRetry) overlayRetry.SetActive(showRetry);
+            }
+            else
+            {
+                if (overlayRetry != null) overlayRetry.SetActive(false);
             }
         }
         if (timerText) timerText.gameObject.SetActive(isPlaying);
@@ -511,7 +627,7 @@ public class ExplosionGlobosManager : MonoBehaviour
 
     void UpdateFallosUI() { if (fallosText) fallosText.text = "Vidas: " + _vidasRestantes; }
 
-    IEnumerator DoFlashDano()
+    System.Collections.IEnumerator DoFlashDano()
     {
         if (flashDano == null) yield break;
         flashDano.gameObject.SetActive(true);
@@ -520,7 +636,7 @@ public class ExplosionGlobosManager : MonoBehaviour
         flashDano.gameObject.SetActive(false);
     }
 
-    private IEnumerator RutinaTintineoVida(Image icon)
+    private System.Collections.IEnumerator RutinaTintineoVida(Image icon)
     {
         if (icon == null) yield break;
 
@@ -602,19 +718,32 @@ public class ExplosionGlobosManager : MonoBehaviour
         if (finalMessageText) finalMessageText.text = resultMsg;
 
         _finalScore = scoreFinal;
+        _resultsDelayTimer = 0f; // Ya no usamos el timer manual
+        _permitirReintento = false; // RESET antes de entrar en Results
+        
         SetState(GameState.Results);
-
-        // Si el puntaje es 100, ocultar botón de reintento y su overlay
-        if (_finalScore >= 100f) 
-        {
-            if (retryBtn != null) retryBtn.gameObject.SetActive(false);
-            if (overlayRetry != null) overlayRetry.SetActive(false);
-        }
+        StartCoroutine(RoutineRetrasoBotones(Mathf.RoundToInt(scoreFinal)));
         
         ClearItems();
     }
 
     void ClearItems() { foreach (Transform t in container) if (t.name.StartsWith("Item_")) Destroy(t.gameObject); }
+
+    private System.Collections.IEnumerator RoutineRetrasoBotones(int score)
+    {
+        _permitirReintento = false;
+        if (retryBtn != null) retryBtn.gameObject.SetActive(false);
+        if (subresText != null) subresText.SetActive(false);
+        if (overlayRetry != null) overlayRetry.SetActive(false);
+
+        if (score >= 100) yield break;
+
+        yield return new WaitForSeconds(3f); // Reducido a 3s a petición del usuario
+
+        _permitirReintento = true;
+        if (retryBtn != null) retryBtn.gameObject.SetActive(true);
+        // NO activamos el overlay ni subres aquí, dejamos que ManejarReintento lo haga según Tobii
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -65,6 +65,9 @@ public class HomeManager : MonoBehaviour
 
     void Start()
     {
+        // Forzar validación de sesión
+        if (GestorPaciente.Instance != null) GestorPaciente.Instance.EsSesionValida();
+
         string nombre = GestorPaciente.Instance != null ? GestorPaciente.Instance.GetNombrePacienteFormateado() : "Astronauta";
         if (textoBienvenida != null) textoBienvenida.text = $"¡Hola, {nombre}!";
 
@@ -107,9 +110,9 @@ public class HomeManager : MonoBehaviour
                        ?? btn.gameObject.AddComponent<EventTrigger>();
 
             AgregarTrigger(trigger, EventTriggerType.PointerEnter,
-                _ => StartCoroutine(EscalarImagen(target, target.localScale.x, 1.08f, 0.18f)));
+                _ => { if (this != null && target != null) StartCoroutine(EscalarImagen(target, target.localScale.x, 1.08f, 0.18f)); });
             AgregarTrigger(trigger, EventTriggerType.PointerExit,
-                _ => StartCoroutine(EscalarImagen(target, target.localScale.x, 1.00f, 0.15f)));
+                _ => { if (this != null && target != null) StartCoroutine(EscalarImagen(target, target.localScale.x, 1.00f, 0.15f)); });
         }
     }
 
