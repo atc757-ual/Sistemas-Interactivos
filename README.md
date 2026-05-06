@@ -1,102 +1,199 @@
-# Galaxy Eye 🌌👁️
+<div align="center">
 
-**Galaxy Eye** es una suite de terapia visual interactiva desarrollada en Unity, dirigida a pacientes con Insuficiencia de Convergencia (CI) y otros trastornos oculomotores. Utiliza tecnología de seguimiento ocular avanzada para proponer ejercicios interactivos gamificados, que fomentan la adherencia y mejoran los resultados clínicos.
+<img src="Assets/Images/Logo.png" alt="Galaxy Eye Logo" width="160"/>
 
-> Proyecto desarrollado para la asignatura **Sistemas Interactivos**, Grado en [Ingeniería Informática], Universidad de Almería.
+# Galaxy Eye
 
----
+### Suite de Terapia Visual Interactiva con Seguimiento Ocular
 
-## 👥 Autores
+[![Unity](https://img.shields.io/badge/Unity-6%20LTS-black?logo=unity&logoColor=white)](https://unity.com/)
+[![URP](https://img.shields.io/badge/URP-17.3.0-5C8CDB?logo=unity&logoColor=white)](https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@latest)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?logo=windows&logoColor=white)](https://www.microsoft.com/windows)
+[![Language](https://img.shields.io/badge/Language-C%23-239120?logo=csharp&logoColor=white)](https://docs.microsoft.com/dotnet/csharp/)
+[![License](https://img.shields.io/badge/License-MIT-22c55e)](LICENSE)
+[![UAL](https://img.shields.io/badge/UAL-Sistemas%20Interactivos-C0392B)](https://www.ual.es/)
 
-- **Johan Cala**
-- **Jesús Ortega**
-- **Alex Taquila**
+*Proyecto académico · Grado en Ingeniería Informática · Universidad de Almería · 2026*
 
----
-
-## 🚀 Tecnologías Utilizadas
-
-- **Engine**: [Unity 2022.3 LTS](https://unity.com/releases/editor/whats-new/2022.3.0)
-  - Render Pipeline: **Universal Render Pipeline (URP)** v17.3.0
-  - **Sistema de Input**: Unity Input System (activo junto a API `Input` Legacy)
-- **Lenguajes**: C# (principal), ShaderLab, HLSL, HTML, PowerShell
-- **SDK de Seguimiento Ocular**: [Tobii Pro SDK for Unity](https://www.tobiipro.com/product-listing/tobii-pro-sdk/)
-  - Compatibilidad: **Tobii Eye Tracker 5** y modelos profesionales compatibles
-- **UI**: uGUI (Canvas), [TextMesh Pro](https://docs.unity3d.com/Packages/com.unity.textmeshpro@latest)
-- **Persistencia**: Sistema de perfiles paciente en JSON sobre `Application.persistentDataPath`
-- **Frameworks de Pruebas**: Unity Test Runner (Edit Mode)
+</div>
 
 ---
 
-## 🛠️ Requisitos Técnicos
+## 📋 Tabla de Contenidos
 
-- **Unity**: Versión 2022.3 LTS o superior *(recomendado 2022.3.x)*
-- **Hardware**: Tobii Eye Tracker 5, compatible con SDK oficial de Tobii Pro
-- **Sistema Operativo**: Windows 10/11
-- **Otros**: Drivers oficiales de Tobii y software de calibración
-- **Recomendado**: Pantalla de al menos 22’’ y buena iluminación frontal
-
----
-
-## 🎮 Actividades Incluidas
-
-1. **🌀 Laberinto Estelar:** Rastreo ocular a través de un camino laberíntico, entrenando precisión y planificación de movimientos.
-2. **✨ Estrella Lineal:** Ejercicio de movimientos sacádicos y seguimiento sobre trayectorias predefinidas.
-3. **🏁 Carrera Ocular:** Reto de rapidez ocular, saltando entre objetivos con clicks o fijación.
-4. **🎈 Explosión Estelar:** Fijación y respuesta rápida explotando objetos con la mirada.
+- [Descripción](#-descripción)
+- [Actividades](#-actividades)
+- [Tecnologías](#-tecnologías)
+- [Requisitos del sistema](#%EF%B8%8F-requisitos-del-sistema)
+- [Instalación](#%EF%B8%8F-instalación-y-puesta-en-marcha)
+- [Estructura del proyecto](#-estructura-del-proyecto)
+- [Pruebas automáticas](#-pruebas-automáticas)
+- [Arquitectura](#%EF%B8%8F-arquitectura)
+- [Autores](#-autores)
+- [Licencia](#-licencia)
 
 ---
 
-## 📦 Estructura del Proyecto
+## 🌌 Descripción
 
-- `Assets/Scripts/`: Lógica C#, manejo de actividades, datos y flujo de escenas.
-- `Assets/Scenes/`: Escenas del juego, menús, procesos de login y calibración.
-- `Assets/Prefabs/`: UI y elementos interactivos reutilizables.
-- `Assets/TobiiPro/`: SDK de integración con hardware Tobii Eye Tracker.
-- `Assets/Tests/EditMode/`: Pruebas automáticas por flujo y parsing directo de scripts.
-- `persistentDataPath/Pacientes/`: Progreso y registros individuales en JSON (uno por paciente).
+**Galaxy Eye** es una suite de terapia visual interactiva desarrollada en **Unity 6**, diseñada para pacientes con **Insuficiencia de Convergencia (CI)** y otros trastornos oculomotores.
+
+El sistema emplea el dispositivo **Tobii Pro Spark** para el seguimiento ocular en tiempo real, trasladando los ejercicios clínicos a un entorno gamificado que mejora la adherencia y los resultados terapéuticos. El paciente se identifica por DNI, realiza la calibración ocular y accede a una colección de mini-juegos controlados por la mirada.
+
+> 📚 Proyecto desarrollado para la asignatura **Sistemas Interactivos**, Grado en Ingeniería Informática, Universidad de Almería.
 
 ---
 
-## 🔧 Instalación y Puesta en Marcha
+## 🎮 Actividades
 
-1. Clona este repositorio:
-    ```sh
-    git clone https://github.com/atc757-ual/Sistemas-Interactivos.git
-    ```
-2. Abre el proyecto desde Unity Hub en la versión recomendada.
-3. Instala el **Tobii Pro SDK for Unity** (carpeta `Assets/TobiiPro/` ya incluida).
-4. Conecta y calibra el Tobii Eye Tracker usando el software oficial.
-5. Abre y ejecuta la escena `Login` para comenzar.
-6. Asegúrate de que todas las escenas principales estén registradas en el **Build Settings**.
+| # | Actividad | Habilidad entrenada | Input |
+|:-:|-----------|---------------------|:-----:|
+| 1 | 🌀 **Laberinto Estelar** | Rastreo de trayectorias, planificación visual | Gaze / Mouse |
+| 2 | ☄️ **Meteoro Zigzag** | Movimientos sacádicos en zigzag | Gaze / Mouse |
+| 3 | 🪐 **Cometa Cuadrado** | Seguimiento suave en trayectoria cuadrada | Gaze / Mouse |
+| 4 | ✨ **Estrella Lineal** | Sacádicos sobre trayectorias lineales predefinidas | Gaze / Mouse |
+| 5 | 🏁 **Carrera Ocular** | Velocidad de reacción y cambio de carril | Click / Gaze |
+| 6 | 🎈 **Explosión de Globos** | Fijación selectiva y respuesta secuencial | Click |
+
+---
+
+## 🚀 Tecnologías
+
+<div align="center">
+
+| Área | Tecnología |
+|------|-----------|
+| 🎮 **Engine** | Unity 6 LTS · Universal Render Pipeline (URP) 17.3.0 |
+| 💻 **Lenguajes** | C# · ShaderLab · HLSL |
+| 👁️ **Eye Tracking** | [Tobii Pro SDK for Unity](https://www.tobiipro.com/product-listing/tobii-pro-sdk/) · Tobii Pro Spark |
+| 🖼️ **UI** | uGUI (Canvas) · [TextMesh Pro](https://docs.unity3d.com/Packages/com.unity.textmeshpro@latest) |
+| 🕹️ **Input** | Unity New Input System + Legacy `Input` API (dual mode) |
+| 💾 **Persistencia** | JSON sobre `Application.persistentDataPath` |
+| 🧪 **Testing** | Unity Test Runner · Edit Mode · NUnit |
+
+</div>
+
+---
+
+## 🛠️ Requisitos del Sistema
+
+| Componente | Requisito mínimo |
+|------------|-----------------|
+| ⚙️ **Unity** | Unity 6 LTS `(6000.0.x recomendado)` |
+| 🪟 **Sistema Operativo** | Windows 10 / 11 (64-bit) |
+| 👁️ **Hardware Eye Tracking** | Tobii Pro Spark (u otro compatible con SDK Tobii Pro) |
+| 🔌 **Drivers** | Tobii Experience software + drivers oficiales actualizados |
+| 🖥️ **Pantalla** | ≥ 22" · buena iluminación frontal recomendada |
+
+> ⚠️ El sistema incluye **fallback a ratón** automático para desarrollo y pruebas sin hardware Tobii.
+
+---
+
+## ⚙️ Instalación y Puesta en Marcha
+
+**1.** Clona el repositorio:
+
+```sh
+git clone https://github.com/atc757-ual/Sistemas-Interactivos.git
+cd Sistemas-Interactivos
+```
+
+**2.** Abre el proyecto desde **Unity Hub** seleccionando la carpeta raíz y eligiendo Unity 6 LTS.
+
+**3.** El SDK de Tobii ya está incluido en `Assets/TobiiPro/`. Instala los drivers oficiales desde [tobii.com](https://www.tobii.com/).
+
+**4.** Conecta y calibra el **Tobii Pro Spark** usando el software oficial de Tobii.
+
+**5.** Abre la escena `Assets/Scenes/Login.unity` y pulsa **▶ Play**.
+
+**6.** Verifica que todas las escenas principales están registradas en **File → Build Settings**.
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+Assets/
+├── 🎬 Scenes/               # Login, Home, Calibración, Actividades, Historial
+├── 🧠 Scripts/              # Lógica C# del proyecto
+│   ├── BaseActividad.cs         # Clase base de todas las actividades
+│   ├── GestorPaciente.cs        # Singleton cross-scene (sesión y datos)
+│   ├── TobiiGazeProvider.cs     # Wrapper del SDK Tobii + fallback mouse
+│   ├── LaberintoManager.cs      # Lógica de la actividad Laberinto Estelar
+│   ├── GeneradorLaberinto.cs    # Generación procedural de laberintos (BFS)
+│   └── ...                      # Resto de managers de actividades
+├── 🧩 Prefabs/              # Elementos UI reutilizables
+├── 🖼️ Images/               # Logos, iconos e imágenes de menú
+├── 🔬 TobiiPro/             # SDK oficial Tobii Pro for Unity
+└── 🧪 Tests/
+    └── EditMode/
+        └── Fase1_NavegacionUI/  # Tests automáticos (parsing + escenas)
+```
 
 ---
 
 ## ✅ Pruebas Automáticas
 
-Ejecuta los tests desde la raíz del proyecto (requiere Unity en el PATH):
+Los tests parsean directamente el código fuente y abren escenas de forma aditiva — **no requieren Play Mode**.
 
 ```sh
+# Desde la raíz del proyecto (requiere Unity en el PATH)
 Unity.exe -batchmode -runTests -testPlatform EditMode -projectPath . -logFile -
 ```
-Archivos de test: `Assets/Tests/EditMode/Fase1_NavegacionUI/`
+
+Los archivos de test se encuentran en `Assets/Tests/EditMode/Fase1_NavegacionUI/`.
 
 ---
 
-## 💡 Notas Técnicas
+## 🏗️ Arquitectura
 
-- **GestorPaciente:** Singleton persistente que lleva el estado y el historial entre escenas.
-- **Actividades:** Derivan de `BaseActividad`, auto-vinculan su UI por nombre y aseguran lógica desacoplada.
-- **Fallback mouse:** El sistema puede funcionar con ratón en ausencia de hardware Tobii (útil para pruebas).
-- **Time.timeScale:** Siempre debe ser reiniciado a `1` al navegar entre escenas.
-- **Dual Input System:** Compatibilidad asegurada con New Input System y API clásica para máxima robustez.
+| Componente | Rol |
+|------------|-----|
+| **`GestorPaciente`** | Singleton `DontDestroyOnLoad`. Almacena DNI, nombre, timestamp de sesión e historial de partidas. Persiste en JSON. |
+| **`BaseActividad`** | Clase abstracta base de todas las actividades. Auto-vincula UI por nombre de `GameObject` y gestiona el ciclo inicio → pausa → reinicio → fin. |
+| **`TobiiGazeProvider`** | Singleton `DontDestroyOnLoad`. Normaliza datos del SDK Tobii y activa fallback a `Input.mousePosition` si no hay hardware conectado. |
+| **`GeneradorLaberinto`** | Genera laberintos procedurales. El camino solución se calcula con BFS y el jugador debe recorrerlo secuencialmente. |
+
+**Flujo de navegación:**
+
+```
+Login → Home → Calibración (desbloquea actividades)
+                     ↓
+               Actividades
+         ↙    ↓    ↓    ↓    ↘
+  Laberinto  Zigzag  Cometa  Estrella  Carrera  Globos
+                     ↘    ↓    ↙
+                       Historial
+```
+
+> ⚡ `Time.timeScale` siempre se resetea a `1` antes de cualquier `SceneManager.LoadScene`.
+
+---
+
+## 👥 Autores
+
+<div align="center">
+
+| Autor | Rol |
+|-------|-----|
+| 👨‍💻 **Johan Cala Torra** | Desarrollo |
+| 👨‍💻 **Jesús Ortega** | Desarrollo |
+| 👨‍💻 **Alex Taquila** | Desarrollo |
+
+*Universidad de Almería · Grado en Ingeniería Informática · Sistemas Interactivos · 2026*
+
+</div>
 
 ---
 
 ## 📄 Licencia
 
-Este proyecto está licenciado bajo los términos de la licencia MIT. Consulta el archivo [LICENSE](LICENSE) para más información.
+Distribuido bajo la licencia **MIT**. Consulta el archivo [`LICENSE`](LICENSE) para más información.
 
 ---
 
-© 2026 Galaxy Eye Team — Terapia Visual de Próxima Generación.
+<div align="center">
+
+© 2026 **Galaxy Eye Team** — Terapia Visual de Próxima Generación &nbsp;🌌👁️
+
+</div>

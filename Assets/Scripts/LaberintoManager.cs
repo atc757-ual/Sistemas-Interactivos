@@ -424,8 +424,6 @@ public class LaberintoManager : BaseActividad
 
         if (!juegoIniciado) return;
 
-        ProcesarSeguimientoOcular();
-
         // Cronómetro con efectos visuales
         _tiempoRestante -= Time.deltaTime;
         if (timerText != null) {
@@ -647,9 +645,11 @@ public class LaberintoManager : BaseActividad
     {
         if (playerCursor == null) return;
 
-        // PRIORIDAD: Si está activada la validación de ojos, usamos Tobii. 
-        // Si no, usamos el Mouse (perfecto para pruebas).
-        if (usarValidacionOjos) {
+        // Usa Tobii si hay datos oculares válidos; si no, fallback al mouse.
+        // (usarValidacionOjos controla solo la puerta de inicio de BaseActividad,
+        //  no el modo de seguimiento durante el juego.)
+        bool tobiiActivo = TobiiGazeProvider.Instance != null && TobiiGazeProvider.Instance.EyeDataValid;
+        if (tobiiActivo) {
             ProcesarSeguimientoOcular();
         } else {
             ProcesarMovimientoMouse();
